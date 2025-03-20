@@ -1,0 +1,149 @@
+{% extends "base.html" %} {% block content %}
+<h1 class="page-title">Pre-Installation Sheet</h1>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Client Information</h2>
+  </div>
+  <p><strong>Client Name:</strong> Jane Smith</p>
+  <p><strong>Job Name:</strong> Living Room Remodel</p>
+  <p><strong>Job Address:</strong> 200 Oak Avenue, Springfield</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Verbals / Installer Notes</h2>
+  </div>
+  <textarea
+    placeholder="Type any notes here..."
+    rows="4"
+    style="width: 100%"
+  ></textarea>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Custom Door Design</h2>
+  </div>
+  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">MOD / DAP</h2>
+  </div>
+  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Door Installer Options</h2>
+  </div>
+  <label style="margin-right: 1rem">
+    <input type="radio" name="door_option" value="option1" /> Option 1
+  </label>
+  <label>
+    <input type="radio" name="door_option" value="option2" /> Option 2
+  </label>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Approved Proposal</h2>
+  </div>
+  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Final Material Order</h2>
+  </div>
+  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Final Permit Floor Plan</h2>
+  </div>
+  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Job Site Photos</h2>
+  </div>
+  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Casing Options</h2>
+  </div>
+  <p>
+    <label style="margin-right: 1rem">
+      <input type="checkbox" name="casing" value="standard" /> Homeowner accepts
+      standard casing
+    </label>
+    <label>
+      <input type="checkbox" name="casing" value="special" /> Homeowner to
+      provide special casing
+    </label>
+  </p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Cleaning Services</h2>
+  </div>
+  <div style="display: flex; flex-wrap: wrap; gap: 1rem">
+    <label>
+      <input type="checkbox" name="cleaning" value="dust" /> Dust All Furniture
+    </label>
+    <label>
+      <input type="checkbox" name="cleaning" value="vacuum" /> Vacuum Carpets
+    </label>
+    <label>
+      <input type="checkbox" name="cleaning" value="mop" /> Mop Floors
+    </label>
+    <label>
+      <input type="checkbox" name="cleaning" value="change_beds" /> Change Bed
+      Sheets
+    </label>
+    <label>
+      <input type="checkbox" name="cleaning" value="windows" /> Detail Windows
+      In/Out
+    </label>
+  </div>
+  <p style="margin-top: 1rem">
+    <label>
+      <input
+        type="checkbox"
+        name="cleaning"
+        value="no_cleaning"
+        id="no-cleaning"
+      />
+      Customer doesn’t require cleaning services
+    </label>
+  </p>
+</div>
+
+<div style="margin-top: 1rem">
+  <button class="btn">Save & Continue</button>
+</div>
+
+<script>
+  // Simple script to grey out cleaning checkboxes if "no cleaning" is selected
+  const noCleaningCheckbox = document.getElementById("no-cleaning");
+  if (noCleaningCheckbox) {
+    noCleaningCheckbox.addEventListener("change", () => {
+      const cleaningBoxes = document.querySelectorAll(
+        'input[name="cleaning"]:not(#no-cleaning)'
+      );
+      cleaningBoxes.forEach((box) => {
+        box.checked = false;
+        box.disabled = noCleaningCheckbox.checked;
+      });
+    });
+  }
+</script>
+{% endblock %}

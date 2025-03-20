@@ -1,0 +1,68 @@
+{% extends "base.html" %} {% block content %}
+<h1 class="page-title">Site Confirmation</h1>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Client Information</h2>
+  </div>
+  <p><strong>Client Name:</strong> John Doe</p>
+  <p><strong>Job Name:</strong> Kitchen Renovation</p>
+  <p><strong>Job Address:</strong> 1234 Elm Street, Springfield</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Upload Combined Sheet</h2>
+  </div>
+  <p>If you have a single combined PDF for all sections, upload it here:</p>
+  <input type="file" accept=".pdf" />
+  <p style="margin-top: 1rem">
+    <label for="combined-pages">Mark Page Numbers for Each Section:</label>
+    <input
+      type="text"
+      id="combined-pages"
+      placeholder="e.g., Floor Plan pg 1, Material pg 2-3..."
+    />
+  </p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Floor Plan</h2>
+  </div>
+  <p>Upload or add your Floor Plan document:</p>
+  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Material Quote (Priceless version)</h2>
+  </div>
+  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Signed Agreement</h2>
+  </div>
+  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Sales Checklist</h2>
+  </div>
+  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Additional Documents (Images/PDFs only)</h2>
+  </div>
+  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
+</div>
+
+<div style="margin-top: 1rem">
+  <button class="btn">Save & Continue</button>
+</div>
+{% endblock %}

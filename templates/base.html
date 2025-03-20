@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ProLuxCon</title>
+
+    <!-- Include Font Awesome (icons) -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <!-- Link your custom stylesheet -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+
+    <!-- Add JavaScript for dropdown behavior -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const profileMenu = document.querySelector(".profile-menu");
+        const profileLink = document.querySelector(".profile-link");
+
+        profileLink.addEventListener("click", function (event) {
+          event.preventDefault(); // Prevent default anchor behavior
+          profileMenu.classList.toggle("show");
+        });
+
+        // Close dropdown if clicked outside
+        document.addEventListener("click", function (event) {
+          if (
+            !profileLink.contains(event.target) &&
+            !profileMenu.contains(event.target)
+          ) {
+            profileMenu.classList.remove("show");
+          }
+        });
+
+        // Add the same behavior for other dropdowns
+        const dropdownLinks = document.querySelectorAll(".dropdown-link");
+        dropdownLinks.forEach((link) => {
+          const menu = link.nextElementSibling;
+
+          link.addEventListener("click", function (event) {
+            event.preventDefault();
+            menu.classList.toggle("show");
+          });
+
+          document.addEventListener("click", function (event) {
+            if (!link.contains(event.target) && !menu.contains(event.target)) {
+              menu.classList.remove("show");
+            }
+          });
+        });
+      });
+    </script>
+
+    <style>
+      /* Dropdown Styling */
+      .profile-container,
+      .dropdown-container {
+        position: relative;
+        display: inline-block;
+      }
+
+      .profile-menu,
+      .dropdown-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        min-width: 160px;
+        z-index: 1000;
+      }
+
+      .profile-menu.show,
+      .dropdown-menu.show {
+        display: block;
+      }
+
+      .profile-menu a,
+      .dropdown-menu a {
+        display: block;
+        padding: 10px;
+        text-decoration: none;
+        color: #333;
+      }
+
+      .profile-menu a:hover,
+      .dropdown-menu a:hover {
+        background-color: #f4f4f4;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <header>
+      <div class="container">
+        <nav>
+          <a href="{{ url_for('dashboard') }}" class="logo">
+            <img
+              src="{{ url_for('static', filename='images/logo.png') }}"
+              alt="ProLuxCon Logo"
+              style="height: 40px; width: auto"
+            />
+          </a>
+          <ul class="nav-links">
+            <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+
+            <!-- Added Measurements/Estimates Link -->
+            <li>
+              <a href="{{ url_for('measure_labor') }}"
+                ><i class="fas fa-ruler-combined"></i> Measure/Labor</a
+              >
+            </li>
+
+            <!-- Installation Dropdown -->
+            <li class="dropdown-container">
+              <a href="#" class="dropdown-link">
+                <i class="fas fa-tools"></i> Installation
+              </a>
+              <div class="dropdown-menu">
+                <a href="{{ url_for('site_confirmation') }}"
+                  ><i class="fas fa-clipboard-check"></i> Site Confirmation</a
+                >
+                <a href="{{ url_for('pre_installation') }}"
+                  ><i class="fas fa-hammer"></i> Pre-Installation</a
+                >
+                <a href="{{ url_for('post_installation') }}"
+                  ><i class="fas fa-check-double"></i> Post-Installation</a
+                >
+              </div>
+            </li>
+
+            <li>
+              <a href="{{ url_for('reports') }}"
+                ><i class="fas fa-file-alt"></i> Reports</a
+              >
+            </li>
+            <li>
+              <a href="{{ url_for('clients') }}"
+                ><i class="fas fa-users"></i> Clients</a
+              >
+            </li>
+            <li>
+              <a href="{{ url_for('settings') }}"
+                ><i class="fas fa-cog"></i> Settings</a
+              >
+            </li>
+
+            <!-- Profile Dropdown -->
+            <li class="profile-container">
+              <a href="#" class="profile-link">
+                <i class="fas fa-user-circle"></i> Profile
+              </a>
+              <div class="profile-menu">
+                <a href="{{ url_for('profile') }}"
+                  ><i class="fas fa-user"></i> Profile Settings</a
+                >
+                <a href="{{ url_for('logout') }}"
+                  ><i class="fas fa-sign-out-alt"></i> Logout</a
+                >
+              </div>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+      <div class="container">{% block content %}{% endblock %}</div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <p>&copy; 2025 ProLuxCon. All rights reserved.</p>
+      </div>
+    </footer>
+  </body>
+</html>

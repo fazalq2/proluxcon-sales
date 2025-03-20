@@ -1,0 +1,132 @@
+{% extends "base.html" %} {% block content %}
+<h1 class="page-title">Post-Installation Sheet</h1>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Client Information</h2>
+  </div>
+  <p><strong>Client Name:</strong> Mark Wilson</p>
+  <p><strong>Job Name:</strong> Garage Extension</p>
+  <p><strong>Job Address:</strong> 987 Pine Rd, Springfield</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Finish</h2>
+  </div>
+  <div id="finish-list">
+    <input
+      type="text"
+      placeholder="Enter finish detail"
+      style="display: block; margin-bottom: 1rem"
+    />
+  </div>
+  <button class="btn btn-sm" onclick="addFinishLine()">
+    <i class="fas fa-plus"></i> Add Another
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Labor</h2>
+  </div>
+  <div id="labor-list">
+    <input
+      type="text"
+      placeholder="Enter labor detail"
+      style="display: block; margin-bottom: 1rem"
+    />
+  </div>
+  <button class="btn btn-sm" onclick="addLaborLine()">
+    <i class="fas fa-plus"></i> Add Another
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Parts</h2>
+  </div>
+  <div id="parts-list">
+    <input
+      type="text"
+      placeholder="Enter part detail"
+      style="display: block; margin-bottom: 1rem"
+    />
+  </div>
+  <button class="btn btn-sm" onclick="addPartsLine()">
+    <i class="fas fa-plus"></i> Add Another
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Permit</h2>
+  </div>
+  <div id="permit-list">
+    <input
+      type="text"
+      placeholder="Enter permit detail"
+      style="display: block; margin-bottom: 1rem"
+    />
+  </div>
+  <button class="btn btn-sm" onclick="addPermitLine()">
+    <i class="fas fa-plus"></i> Add Another
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Final Permit Floor Plan</h2>
+  </div>
+  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Final Invoice</h2>
+  </div>
+  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
+</div>
+
+<div style="margin-top: 1rem">
+  <button class="btn">Save & Complete</button>
+</div>
+
+<script>
+  function addFinishLine() {
+    const finishList = document.getElementById("finish-list");
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Enter finish detail";
+    input.style = "display:block; margin-bottom:1rem;";
+    finishList.appendChild(input);
+  }
+
+  function addLaborLine() {
+    const laborList = document.getElementById("labor-list");
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Enter labor detail";
+    input.style = "display:block; margin-bottom:1rem;";
+    laborList.appendChild(input);
+  }
+
+  function addPartsLine() {
+    const partsList = document.getElementById("parts-list");
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Enter part detail";
+    input.style = "display:block; margin-bottom:1rem;";
+    partsList.appendChild(input);
+  }
+
+  function addPermitLine() {
+    const permitList = document.getElementById("permit-list");
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Enter permit detail";
+    input.style = "display:block; margin-bottom:1rem;";
+    permitList.appendChild(input);
+  }
+</script>
+{% endblock %}

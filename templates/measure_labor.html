@@ -1,0 +1,1086 @@
+{% extends "base.html" %} {% block content %}
+
+<h1 class="page-title">Measure / Labor</h1>
+
+<!-- Container to hold the left and right portions in a flex layout -->
+<div style="display: flex; gap: 2rem; flex-wrap: wrap">
+  <!-- LEFT SIDE (2/3): The measure/labor table -->
+  <div style="flex: 2; min-width: 450px">
+    <div class="card">
+      <!-- Card header: Title + template buttons -->
+      <div class="card-header" style="justify-content: space-between">
+        <h2 class="card-title">Measurements</h2>
+        <div>
+          <button class="btn btn-sm" id="copy-template-btn">
+            Copy from Template
+          </button>
+          <button class="btn btn-sm" id="create-template-btn">
+            Create Template
+          </button>
+          <!-- Save Report Button -->
+          <button class="btn" id="save-report-btn">
+            <i class="fas fa-save"></i> Save Report
+          </button>
+        </div>
+      </div>
+
+      <!-- Main measure/labor table in a scrollable container -->
+      <div class="table-responsive">
+        <table id="measure-labor-table">
+          <thead>
+            <tr>
+              <th style="width: 60px">Nbr.</th>
+              <th style="width: 100px">Style</th>
+              <th style="width: 150px">CONFIG</th>
+              <th style="width: 80px">W</th>
+              <th style="width: 80px">H</th>
+              <th style="width: 120px">Door Design<br />(Yes/No)</th>
+              <th style="width: 80px">PRIV<br />(Yes/No)</th>
+              <th style="width: 80px">EG<br />(Yes/No)</th>
+              <th style="width: 120px">Grids<br />(Yes/No)</th>
+              <th style="width: 120px">Grid Config.</th>
+              <th style="width: 80px">S/R<br />(Yes/No)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <input type="text" class="colA" readonly placeholder="(auto)" />
+              </td>
+              <td>
+                <select class="colB">
+                  <option value="">--Select--</option>
+                  <option value="sfd">sfd</option>
+                  <option value="hr">hr</option>
+                  <option value="sh">sh</option>
+                  <option value="cas">cas</option>
+                  <option value="dfd">dfd</option>
+                  <option value="sgd">sgd</option>
+                  <option value="pw">pw</option>
+                  <option value="mull">mull</option>
+                </select>
+              </td>
+              <td>
+                <!-- CONFIG can be either a dropdown or free text, depending on style -->
+                <input
+                  type="text"
+                  class="colC"
+                  placeholder="(depends on Style)"
+                  disabled
+                />
+              </td>
+              <td><input type="text" class="colD" placeholder="e.g. 36" /></td>
+              <td><input type="text" class="colE" placeholder="e.g. 80" /></td>
+
+              <!-- Door Design (Yes/No) -->
+              <td>
+                <select class="colF">
+                  <option value="">--Select--</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </td>
+
+              <!-- PRIV (Yes/No) -->
+              <td>
+                <select class="colG">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </td>
+
+              <!-- EG (Yes/No) -->
+              <td>
+                <select class="colH">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </td>
+
+              <!-- Grids (Yes/No) -->
+              <td>
+                <select class="colI">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </td>
+
+              <!-- Grid Config (text) -->
+              <td>
+                <input type="text" class="colJ" placeholder="e.g. 3/3" />
+              </td>
+
+              <!-- S/R (Yes/No) -->
+              <td>
+                <select class="colK">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </td>
+
+              <td>
+                <button class="btn btn-delete" onclick="deleteRow(this)">
+                  Delete
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- .table-responsive -->
+
+      <!-- Add Row button -->
+      <div style="margin-top: 1rem">
+        <button class="btn" id="add-row-btn">
+          <i class="fas fa-plus"></i> Add Row
+        </button>
+      </div>
+    </div>
+    <!-- .card -->
+  </div>
+  <!-- Left side div -->
+
+  <!-- RIGHT SIDE (1/3): The estimate/summary panel -->
+  <div style="flex: 1; min-width: 300px">
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Estimate</h2>
+      </div>
+      <div class="table-responsive">
+        <table style="width: 100%; border-collapse: collapse">
+          <thead>
+            <tr>
+              <th style="text-align: left">Category</th>
+              <th>Amount</th>
+              <th>QTY</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Windows -->
+            <tr>
+              <td
+                colspan="4"
+                style="font-weight: bold; background: #000; color: #fff"
+              >
+                WINDOWS
+              </td>
+            </tr>
+            <tr>
+              <td>Extra large 111+</td>
+              <td>$450</td>
+              <td>
+                <input
+                  type="number"
+                  class="qty"
+                  data-price="450"
+                  id="extra-large-qty"
+                  value="0"
+                  readonly
+                />
+              </td>
+              <td class="total">$0</td>
+            </tr>
+            <tr>
+              <td>Large 75-110</td>
+              <td>$360</td>
+              <td>
+                <input
+                  type="number"
+                  class="qty"
+                  data-price="360"
+                  id="large-qty"
+                  value="0"
+                  readonly
+                />
+              </td>
+              <td class="total">$0</td>
+            </tr>
+            <tr>
+              <td>Small 1-74</td>
+              <td>$300</td>
+              <td>
+                <input
+                  type="number"
+                  class="qty"
+                  data-price="300"
+                  id="small-qty"
+                  value="0"
+                  readonly
+                />
+              </td>
+              <td class="total">$0</td>
+            </tr>
+            <tr>
+              <td>Mull Door / Win</td>
+              <td>$40</td>
+              <td>
+                <input
+                  type="number"
+                  class="qty"
+                  data-price="40"
+                  id="mull-qty"
+                  value="0"
+                  readonly
+                />
+              </td>
+              <td class="total">$0</td>
+            </tr>
+
+            <!-- Doors -->
+            <tr>
+              <td
+                colspan="4"
+                style="font-weight: bold; background: #000; color: #fff"
+              >
+                DOORS
+              </td>
+            </tr>
+            <tr>
+              <td>SFD</td>
+              <td>$825</td>
+              <td>
+                <input
+                  type="number"
+                  class="qty"
+                  data-price="825"
+                  id="sfd-qty"
+                  value="0"
+                  readonly
+                />
+              </td>
+              <td class="total">$0</td>
+            </tr>
+            <tr>
+              <td>DFD</td>
+              <td>$900</td>
+              <td>
+                <input
+                  type="number"
+                  class="qty"
+                  data-price="900"
+                  id="dfd-qty"
+                  value="0"
+                  readonly
+                />
+              </td>
+              <td class="total">$0</td>
+            </tr>
+            <tr>
+              <td>SGD</td>
+              <td>$600</td>
+              <td>
+                <input
+                  type="number"
+                  class="qty"
+                  data-price="600"
+                  id="sgd-qty"
+                  value="0"
+                  readonly
+                />
+              </td>
+              <td class="total">$0</td>
+            </tr>
+            <tr>
+              <td>Extra Panels</td>
+              <td>$225</td>
+              <td>
+                <input
+                  type="number"
+                  class="qty"
+                  data-price="225"
+                  id="extra-panels-qty"
+                  value="0"
+                  readonly
+                />
+              </td>
+              <td class="total">$0</td>
+            </tr>
+            <tr>
+              <td>Door Design/panel</td>
+              <td>$1050</td>
+              <td>
+                <input
+                  type="number"
+                  class="qty"
+                  data-price="1050"
+                  id="door-design-qty"
+                  value="0"
+                  readonly
+                />
+              </td>
+              <td class="total">$0</td>
+            </tr>
+            <tr>
+              <td>Shutter Removal</td>
+              <td>$40</td>
+              <td>
+                <input
+                  type="number"
+                  class="qty"
+                  data-price="40"
+                  id="shutter-removal-qty"
+                  value="0"
+                  readonly
+                />
+              </td>
+              <td class="total">$0</td>
+            </tr>
+
+            <!-- Permit -->
+            <tr>
+              <td
+                colspan="4"
+                style="font-weight: bold; background: #000; color: #fff"
+              >
+                PERMIT
+              </td>
+            </tr>
+            <tr>
+              <td>PERMIT PREP $450 STANDARD</td>
+              <td>$450</td>
+              <td>1</td>
+              <td id="permit-fee">$450</td>
+            </tr>
+
+            <!-- Labor Total -->
+            <tr style="font-weight: bold">
+              <td>LABOR TOTAL</td>
+              <td colspan="2"></td>
+              <td id="labor-total">$0</td>
+            </tr>
+
+            <!-- Marketing -->
+            <tr>
+              <td
+                colspan="4"
+                style="font-weight: bold; background: #000; color: #fff"
+              >
+                MARKETING
+              </td>
+            </tr>
+            <tr>
+              <td>Referral/Marketing/Fee</td>
+              <td>$</td>
+              <td>
+                <input
+                  type="number"
+                  id="marketing-fee"
+                  value="0"
+                  min="0"
+                  onchange="updateTotals()"
+                />
+              </td>
+              <td id="marketing-total">$0</td>
+            </tr>
+
+            <!-- Material -->
+            <tr>
+              <td
+                colspan="4"
+                style="font-weight: bold; background: #000; color: #fff"
+              >
+                MATERIAL
+              </td>
+            </tr>
+            <tr>
+              <td>Material Cost</td>
+              <td>$</td>
+              <td>
+                <input
+                  type="number"
+                  id="material-cost"
+                  value="0"
+                  min="0"
+                  onchange="updateTotals()"
+                />
+              </td>
+              <td id="material-total">$0</td>
+            </tr>
+
+            <!-- Salesman Cost -->
+            <tr>
+              <td>Salesman Cost</td>
+              <td colspan="2"></td>
+              <td id="salesman-cost">$0</td>
+            </tr>
+
+            <!-- Markup -->
+            <tr>
+              <td>Markup</td>
+              <td>$</td>
+              <td>
+                <input
+                  type="number"
+                  id="markup-input"
+                  value="5000"
+                  min="0"
+                  onchange="updateTotals()"
+                />
+              </td>
+              <td id="markup">$5,000</td>
+            </tr>
+
+            <!-- Total Contract Amount -->
+            <tr style="font-weight: bold">
+              <td>TOTAL CONTRACT AMOUNT</td>
+              <td colspan="2"></td>
+              <td id="total-contract">$5,000</td>
+            </tr>
+
+            <!-- Commission -->
+            <tr>
+              <td>COMMISSION</td>
+              <td colspan="2"></td>
+              <td id="commission">$1,000</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <!-- Right side div -->
+</div>
+<!-- End of flex container -->
+
+<script>
+  // Maps Style -> possible CONFIGS (for the CONFIG column C).
+  const configDropdowns = {
+    sfd: ["Right Hinged", "Left Hinged", "xo", "ox"],
+    hr: ["25/50/25", "33/33/33"],
+    sh: ["Standard", "oriel", "second floor"],
+    cas: ["single", "double"],
+    dfd: [], // free-text
+    sgd: [], // free-text
+    pw: ["o"],
+    mull: ["1x", "2x", "3x", "4x", "5x", "6x"],
+  };
+
+  const tableBody = document.querySelector("#measure-labor-table tbody");
+  const addRowBtn = document.getElementById("add-row-btn");
+
+  // Add event listeners
+  tableBody.addEventListener("change", (e) => {
+    // If the user changed Style (colB) or Grids (colI), update row UI
+    if (
+      e.target.classList.contains("colB") ||
+      e.target.classList.contains("colI")
+    ) {
+      const currentRow = e.target.closest("tr");
+      if (e.target.classList.contains("colB")) {
+        updateRowConfigField(currentRow);
+      }
+      updateRowUI(currentRow);
+    }
+    updateAllNumbers();
+    updateEstimate();
+  });
+
+  addRowBtn.addEventListener("click", () => {
+    const newRow = document.createElement("tr");
+    // Clone from the first row's innerHTML
+    newRow.innerHTML = tableBody.querySelector("tr").innerHTML;
+    tableBody.appendChild(newRow);
+
+    // Re-init config field + UI state
+    updateRowConfigField(newRow);
+    updateRowUI(newRow);
+
+    updateAllNumbers();
+    updateEstimate();
+  });
+
+  function deleteRow(button) {
+    button.closest("tr").remove();
+    updateAllNumbers();
+    updateEstimate();
+  }
+
+  // 1) Rebuild the CONFIG column (colC) as either a dropdown or free-text
+  function updateRowConfigField(row) {
+    const colB = row.querySelector(".colB");
+    let colC = row.querySelector(".colC");
+    const styleValue = colB.value.trim().toLowerCase();
+
+    if (["dfd", "sgd"].includes(styleValue)) {
+      // free-text
+      const newInput = document.createElement("input");
+      newInput.type = "text";
+      newInput.classList.add("colC");
+      newInput.placeholder = "Enter text";
+      colC.replaceWith(newInput);
+    } else if (configDropdowns[styleValue]) {
+      // build a dropdown
+      const newSelect = document.createElement("select");
+      newSelect.classList.add("colC");
+      newSelect.innerHTML =
+        `<option value="">--Select--</option>` +
+        configDropdowns[styleValue]
+          .map((opt) => `<option value="${opt}">${opt}</option>`)
+          .join("");
+      colC.replaceWith(newSelect);
+    } else {
+      // fallback: disabled
+      const newSelect = document.createElement("select");
+      newSelect.classList.add("colC");
+      newSelect.disabled = true;
+      newSelect.innerHTML = `<option value="">(depends on Style)</option>`;
+      colC.replaceWith(newSelect);
+    }
+  }
+
+  // 2) Update the row's other fields so that if style="mull" => disable them, etc.
+  function updateRowUI(row) {
+    const styleValue = (row.querySelector(".colB").value || "").toLowerCase();
+
+    // Identify columns
+    const colD = row.querySelector(".colD"); // W
+    const colE = row.querySelector(".colE"); // H
+    const colF = row.querySelector(".colF"); // Door Design
+    const colG = row.querySelector(".colG"); // PRIV
+    const colH = row.querySelector(".colH"); // EG
+    const colI = row.querySelector(".colI"); // Grids
+    const colJ = row.querySelector(".colJ"); // Grid Config
+    const colK = row.querySelector(".colK"); // S/R
+
+    if (styleValue === "mull") {
+      // Disable everything except colC
+      colD.disabled = true;
+      colE.disabled = true;
+      colF.disabled = true;
+      colG.disabled = true;
+      colH.disabled = true;
+      colI.disabled = true;
+      colJ.disabled = true;
+      colK.disabled = true;
+
+      // Clear their values
+      colD.value = "";
+      colE.value = "";
+      colF.value = "No";
+      colG.value = "No";
+      colH.value = "No";
+      colI.value = "No";
+      colJ.value = "";
+      colK.value = "No";
+      return;
+    }
+
+    // Otherwise re-enable everything
+    colD.disabled = false;
+    colE.disabled = false;
+    colF.disabled = false;
+    colG.disabled = false;
+    colH.disabled = false;
+    colI.disabled = false;
+    colJ.disabled = false;
+    colK.disabled = false;
+
+    // Disable Door Design if style != sfd/dfd/sgd
+    if (!["sfd", "dfd", "sgd"].includes(styleValue)) {
+      colF.disabled = true;
+      colF.value = "No";
+    }
+
+    // Disable Grid Config if Grids = "No"
+    if (colI.value === "No") {
+      colJ.disabled = true;
+      colJ.value = "";
+    } else {
+      colJ.disabled = false;
+    }
+  }
+
+  // 3) Excel-like numbering logic in colA
+  function updateAllNumbers() {
+    const rows = Array.from(tableBody.querySelectorAll("tr"));
+    const colAValues = [];
+
+    rows.forEach((row, i) => {
+      const style = (row.querySelector(".colB")?.value || "").toLowerCase();
+      const prevA = i > 0 ? colAValues[i - 1] : "";
+      const prevStyle =
+        i > 0
+          ? (rows[i - 1].querySelector(".colB")?.value || "").toLowerCase()
+          : "";
+
+      if (!style) {
+        colAValues[i] = "";
+      } else if (i === 0) {
+        colAValues[i] = "1";
+      } else if (style === "mull" || prevA === "" || prevStyle === "mull") {
+        colAValues[i] = prevA;
+      } else {
+        colAValues[i] = String(parseInt(prevA) + 1);
+      }
+    });
+
+    rows.forEach((row, i) => {
+      row.querySelector(".colA").value = colAValues[i];
+    });
+  }
+
+  // 4) Recompute door/window counts & fill QTY in the Estimate table
+  function updateEstimate() {
+    let sfdCount = 0,
+      dfdCount = 0,
+      sgdCount = 0,
+      mullCount = 0;
+    let extraPanelsCount = 0;
+    let extraLargeCount = 0,
+      largeCount = 0,
+      smallCount = 0;
+
+    let doorDesignYesCount = 0;
+    let shutterRemovalYesCount = 0;
+
+    const rows = tableBody.querySelectorAll("tr");
+    rows.forEach((row) => {
+      const style = (row.querySelector(".colB")?.value || "").toLowerCase();
+      const config = row.querySelector(".colC")?.value || "";
+      const width = parseInt(row.querySelector(".colD")?.value) || 0;
+
+      // Door Design "Yes"
+      const doorDesignVal = row.querySelector(".colF").value || "No";
+      // S/R "Yes"
+      const shutterVal = row.querySelector(".colK").value || "No";
+
+      // Doors
+      if (style === "sfd") sfdCount++;
+      if (style === "dfd") dfdCount++;
+      if (style === "sgd") sgdCount++;
+      if (style === "mull") mullCount++;
+
+      // Extra Panels for DFD/SGD
+      if (["dfd", "sgd"].includes(style)) {
+        let xCount = config.length - config.replace(/x/g, "").length;
+        let oCount = config.length - config.replace(/o/g, "").length;
+        let panelCount = xCount + oCount - 2;
+        if (panelCount > 0) {
+          extraPanelsCount += panelCount;
+        }
+      }
+
+      // Windows classification
+      let uValue = "";
+      if (!["sh", "hr", "pw", "cas"].includes(style)) {
+        uValue = "NO";
+      } else if (style === "sh" && width < 74) {
+        uValue = "NO";
+      } else if (["hr", "pw", "cas"].includes(style)) {
+        uValue = "NO";
+      } else {
+        uValue = "YES"; // Only sh + W>=74 => YES
+      }
+
+      // If uValue=NO => check width
+      if (uValue === "NO") {
+        if (width >= 111) extraLargeCount++;
+        else if (width >= 75 && width <= 110) largeCount++;
+        else if (width >= 1 && width <= 74) smallCount++;
+      }
+
+      if (doorDesignVal === "Yes") doorDesignYesCount++;
+      if (shutterVal === "Yes") shutterRemovalYesCount++;
+    });
+
+    document.querySelector("#sfd-qty").value = sfdCount;
+    document.querySelector("#dfd-qty").value = dfdCount;
+    document.querySelector("#sgd-qty").value = sgdCount;
+    document.querySelector("#mull-qty").value = mullCount;
+    document.querySelector("#extra-panels-qty").value = extraPanelsCount;
+
+    document.querySelector("#extra-large-qty").value = extraLargeCount;
+    document.querySelector("#large-qty").value = largeCount;
+    document.querySelector("#small-qty").value = smallCount;
+
+    document.querySelector("#door-design-qty").value = doorDesignYesCount;
+    document.querySelector("#shutter-removal-qty").value =
+      shutterRemovalYesCount;
+
+    updateTotals();
+  }
+
+  // 5) Recalculate the Labor total, Markup, Commission, etc.
+  function updateTotals() {
+    // Calculate labor items total (excluding permit)
+    let laborItemsTotal = 0;
+    document.querySelectorAll(".qty").forEach((input) => {
+      let price = parseFloat(input.getAttribute("data-price")) || 0;
+      let qty = parseInt(input.value) || 0;
+      let totalCell = input.closest("tr").querySelector(".total");
+      let totalPrice = price * qty;
+
+      totalCell.textContent = `$${totalPrice}`;
+      laborItemsTotal += totalPrice;
+    });
+
+    // Permit fee is fixed at $450
+    const permitFee = 450;
+
+    // Marketing
+    const marketingFeeInput = document.getElementById("marketing-fee");
+    const marketingFee = parseInt(marketingFeeInput.value) || 0;
+    document.getElementById("marketing-total").textContent = `$${marketingFee}`;
+
+    // Material
+    const materialCostInput = document.getElementById("material-cost");
+    const materialCost = parseInt(materialCostInput.value) || 0;
+    document.getElementById("material-total").textContent = `$${materialCost}`;
+
+    // Labor total
+    const laborTotal = laborItemsTotal + permitFee;
+    document.getElementById("labor-total").textContent = `$${laborTotal}`;
+
+    // Salesman cost = labor + marketing + material
+    const salesmanCost = laborTotal + marketingFee + materialCost;
+    document.getElementById("salesman-cost").textContent = `$${salesmanCost}`;
+
+    // Markup
+    const markupInput = document.getElementById("markup-input");
+    if (markupInput.value < 0 || isNaN(markupInput.value)) {
+      markupInput.value = 0;
+    }
+    const markup = parseInt(markupInput.value) || 0;
+    document.getElementById("markup").textContent = `$${markup}`;
+
+    // Total Contract
+    const contractTotal = salesmanCost + markup;
+    document.getElementById("total-contract").textContent = `$${contractTotal}`;
+
+    // Commission (20% of markup)
+    const commission = markup * 0.2;
+    document.getElementById("commission").textContent = `$${commission}`;
+  }
+
+  // Trigger recalculations on changes
+  document
+    .querySelector("#measure-labor-table")
+    .addEventListener("input", updateEstimate);
+  document
+    .getElementById("marketing-fee")
+    .addEventListener("input", updateTotals);
+  document
+    .getElementById("material-cost")
+    .addEventListener("input", updateTotals);
+  document
+    .getElementById("markup-input")
+    .addEventListener("input", updateTotals);
+
+  // On page load
+  updateAllNumbers();
+  updateEstimate();
+</script>
+
+<script>
+  // -------------------------------------------
+  // SAVE REPORT LOGIC
+  // -------------------------------------------
+
+  // We have ONE event listener for the "Save Report" button,
+  // which first checks the session, then calls saveReport() if valid.
+  document
+    .getElementById("save-report-btn")
+    .addEventListener("click", function () {
+      console.log("Save button clicked");
+      verifySaveSession();
+    });
+
+  function verifySaveSession() {
+    console.log("Verifying session before saving...");
+
+    fetch("/check_login", {
+      method: "GET",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      credentials: "same-origin",
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("Session verification:", data);
+
+        if (!data.logged_in) {
+          alert("Your session has expired. Please log in again.");
+          window.location.href = "/";
+          return;
+        }
+        // If session is valid, proceed with save
+        saveReport();
+      })
+      .catch((error) => {
+        console.error("Session verification failed:", error);
+        if (
+          confirm("Unable to verify your login status. Try logging in again?")
+        ) {
+          window.location.href = "/";
+        }
+      });
+  }
+
+  function saveReport() {
+    // Disable the button to prevent multiple clicks
+    const saveBtn = document.getElementById("save-report-btn");
+    const originalBtnText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    saveBtn.disabled = true;
+
+    try {
+      // Collect measurements data
+      const measurements = [];
+      const measureRows = document.querySelectorAll(
+        "#measure-labor-table tbody tr"
+      );
+
+      console.log(`Found ${measureRows.length} measurement rows`);
+
+      if (measureRows.length === 0) {
+        throw new Error(
+          "No measurement data found. Please add at least one row."
+        );
+      }
+
+      measureRows.forEach((row, idx) => {
+        const nbr = row.querySelector(".colA").value || (idx + 1).toString();
+        const style = row.querySelector(".colB").value || "";
+
+        if (!style) {
+          throw new Error(`Row ${idx + 1}: Style is required`);
+        }
+
+        let width = row.querySelector(".colD").value || "";
+        let height = row.querySelector(".colE").value || "";
+        if (width && isNaN(parseFloat(width))) {
+          throw new Error(`Row ${idx + 1}: Width must be a number`);
+        }
+        if (height && isNaN(parseFloat(height))) {
+          throw new Error(`Row ${idx + 1}: Height must be a number`);
+        }
+
+        const measurement = {
+          nbr: nbr,
+          style: style,
+          config: row.querySelector(".colC").value || "",
+          width: width,
+          height: height,
+          door_design: row.querySelector(".colF").value || "No",
+          priv: row.querySelector(".colG").value || "No",
+          eg: row.querySelector(".colH").value || "No",
+          grids: row.querySelector(".colI").value || "No",
+          grid_config: row.querySelector(".colJ").value || "",
+          sr: row.querySelector(".colK").value || "No",
+        };
+        measurements.push(measurement);
+      });
+
+      // Helper: safely parse numeric values
+      const safeParseNumber = (value, defaultVal = 0) => {
+        if (!value) return defaultVal;
+        let stripped = value.toString().replace(/[$,]/g, "");
+        const num = parseFloat(stripped);
+        return isNaN(num) ? defaultVal : num;
+      };
+
+      // Collect estimate data
+      const estimate = {
+        extra_large_qty: safeParseNumber(
+          document.querySelector("#extra-large-qty").value
+        ),
+        large_qty: safeParseNumber(document.querySelector("#large-qty").value),
+        small_qty: safeParseNumber(document.querySelector("#small-qty").value),
+        mull_qty: safeParseNumber(document.querySelector("#mull-qty").value),
+        sfd_qty: safeParseNumber(document.querySelector("#sfd-qty").value),
+        dfd_qty: safeParseNumber(document.querySelector("#dfd-qty").value),
+        sgd_qty: safeParseNumber(document.querySelector("#sgd-qty").value),
+        extra_panels_qty: safeParseNumber(
+          document.querySelector("#extra-panels-qty").value
+        ),
+        door_design_qty: safeParseNumber(
+          document.querySelector("#door-design-qty").value
+        ),
+        shutter_removal_qty: safeParseNumber(
+          document.querySelector("#shutter-removal-qty").value
+        ),
+
+        labor_total: safeParseNumber(
+          document.querySelector("#labor-total").textContent
+        ),
+        marketing_fee: safeParseNumber(
+          document.querySelector("#marketing-fee").value
+        ),
+        material_cost: safeParseNumber(
+          document.querySelector("#material-cost").value
+        ),
+        markup: safeParseNumber(
+          document.querySelector("#markup-input").value,
+          5000
+        ),
+        salesman_cost: safeParseNumber(
+          document.querySelector("#salesman-cost").textContent
+        ),
+        total_contract: safeParseNumber(
+          document.querySelector("#total-contract").textContent
+        ),
+        commission: safeParseNumber(
+          document.querySelector("#commission").textContent
+        ),
+      };
+
+      console.log("Measurements:", measurements);
+      console.log("Estimate:", estimate);
+
+      // Prepare request data
+      const requestData = { measurements, estimate };
+
+      fetch("/save_report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify(requestData),
+        credentials: "same-origin",
+      })
+        .then((response) => {
+          console.log("Response status:", response.status);
+          const contentType = response.headers.get("Content-Type");
+          console.log("Content-Type:", contentType);
+
+          if (contentType && contentType.includes("text/html")) {
+            throw new Error("Session expired. Please log in again.");
+          }
+          return response.text().then((text) => {
+            if (
+              text.trim().startsWith("<!DOCTYPE") ||
+              text.trim().startsWith("<html")
+            ) {
+              console.error("Received HTML instead of JSON");
+              throw new Error("Session expired. Please log in again.");
+            }
+            try {
+              return JSON.parse(text);
+            } catch (e) {
+              throw new Error(
+                "Server returned invalid response. You may need to log in again."
+              );
+            }
+          });
+        })
+        .then((data) => {
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          console.log("Save successful:", data);
+          alert(`Report saved successfully! Report ID: ${data.report_id}`);
+        })
+        .catch((error) => {
+          console.error("Save error:", error);
+          if (
+            error.message.includes("session") ||
+            error.message.includes("log in") ||
+            error.message.includes("HTML") ||
+            error.message.includes("invalid response")
+          ) {
+            if (confirm("Your session has expired. Please log in again.")) {
+              window.location.href = "/";
+            }
+          } else {
+            alert(`Error saving report: ${error.message}`);
+          }
+        })
+        .finally(() => {
+          // Re-enable the Save button
+          saveBtn.innerHTML = originalBtnText;
+          saveBtn.disabled = false;
+        });
+    } catch (error) {
+      console.error("Data preparation error:", error);
+      alert(`Error: ${error.message}`);
+      saveBtn.innerHTML = originalBtnText;
+      saveBtn.disabled = false;
+    }
+  }
+
+  // Debug Tools
+  function addDebugPanel() {
+    const debugPanel = document.createElement("div");
+    debugPanel.className = "debug-panel";
+    debugPanel.style.cssText =
+      "position: fixed; bottom: 10px; right: 10px; background: #f8f9fa; border: 1px solid #ccc; padding: 10px; z-index: 9999; border-radius: 4px;";
+    debugPanel.innerHTML = `
+      <div style="font-weight: bold; margin-bottom: 5px;">Debug Tools</div>
+      <button id="test-session-btn" style="margin-right: 5px;">Check Session</button>
+      <button id="test-save-btn">Test Simple Save</button>
+    `;
+    document.body.appendChild(debugPanel);
+
+    // Event listeners for debug
+    document
+      .getElementById("test-session-btn")
+      .addEventListener("click", checkSession);
+    document
+      .getElementById("test-save-btn")
+      .addEventListener("click", testSimpleSave);
+  }
+
+  function checkSession() {
+    fetch("/check_login", {
+      method: "GET",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      credentials: "same-origin",
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("Session status:", data);
+        alert(
+          data.logged_in
+            ? `Logged in as: ${data.user_email} (ID: ${data.user_id}, Role: ${data.user_role})`
+            : "Not logged in"
+        );
+      })
+      .catch((error) => {
+        console.error("Session check failed:", error);
+        alert("Session check failed: " + error.message);
+      });
+  }
+
+  function testSimpleSave() {
+    const testData = { test: true, timestamp: new Date().toISOString() };
+    fetch("/test_save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: JSON.stringify(testData),
+      credentials: "same-origin",
+    })
+      .then((response) => response.text())
+      .then((text) => {
+        console.log("Raw test response:", text);
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          throw new Error("Invalid JSON response: " + text.substring(0, 100));
+        }
+        return data;
+      })
+      .then((data) => {
+        console.log("Test save result:", data);
+        alert(
+          data.success
+            ? `Test save successful! Report ID: ${data.report_id}`
+            : `Test save failed: ${data.error}`
+        );
+      })
+      .catch((error) => {
+        console.error("Test save error:", error);
+        alert("Test save failed: " + error.message);
+      });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    addDebugPanel();
+  });
+</script>
+
+{% endblock %}

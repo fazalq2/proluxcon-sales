@@ -1,0 +1,93 @@
+{% extends "base.html" %} {% block content %}
+<h1 class="page-title">Welcome to ProLuxCon</h1>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=True) %} {% if messages
+%}
+<div class="flash-messages">
+  {% for category, message in messages %}
+  <div class="alert alert-{{ category }}" style="margin: 1rem 0">
+    {{ message }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %} {% endwith %}
+
+<div
+  class="stats-container"
+  style="display: flex; gap: 2rem; margin-top: 1rem; flex-wrap: wrap"
+>
+  <!-- Login Form -->
+  <div class="card" style="flex: 1; min-width: 300px">
+    <div class="card-header">
+      <h2 class="card-title">Login</h2>
+    </div>
+    <form
+      method="POST"
+      action="{{ url_for('login') }}"
+      style="display: flex; flex-direction: column; gap: 1rem"
+    >
+      <label for="login-email">Email</label>
+      <input
+        type="email"
+        id="login-email"
+        name="login_email"
+        placeholder="Enter your email"
+        required
+      />
+
+      <label for="login-password">Password</label>
+      <input
+        type="password"
+        id="login-password"
+        name="login_password"
+        placeholder="Enter your password"
+        required
+      />
+
+      <button type="submit" class="btn">Login</button>
+    </form>
+  </div>
+
+  <!-- Signup Form -->
+  <div class="card" style="flex: 1; min-width: 300px">
+    <div class="card-header">
+      <h2 class="card-title">Sign Up</h2>
+    </div>
+    <form
+      method="POST"
+      action="{{ url_for('signup') }}"
+      style="display: flex; flex-direction: column; gap: 1rem"
+    >
+      <label for="signup-name">Full Name</label>
+      <input
+        type="text"
+        id="signup-name"
+        name="signup_name"
+        placeholder="Enter your full name"
+        required
+      />
+
+      <label for="signup-email">Email</label>
+      <input
+        type="email"
+        id="signup-email"
+        name="signup_email"
+        placeholder="Enter your email"
+        required
+      />
+
+      <label for="signup-password">Password</label>
+      <input
+        type="password"
+        id="signup-password"
+        name="signup_password"
+        placeholder="Create a password"
+        required
+      />
+
+      <button type="submit" class="btn">Sign Up</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
