@@ -2,446 +2,453 @@
 
 <h1 class="page-title">Measure / Labor</h1>
 
-<!-- Container to hold the left and right portions in a flex layout -->
-<div style="display: flex; gap: 2rem; flex-wrap: wrap">
-  <!-- LEFT SIDE (2/3): The measure/labor table -->
-  <div style="flex: 2; min-width: 450px">
-    <div class="card">
-      <!-- Card header: Title + template buttons -->
-      <div class="card-header" style="justify-content: space-between">
-        <h2 class="card-title">Measurements</h2>
-        <div>
-          <button class="btn btn-sm" id="copy-template-btn">
-            Copy from Template
-          </button>
-          <button class="btn btn-sm" id="create-template-btn">
-            Create Template
-          </button>
-          <!-- Save Report Button -->
-          <button class="btn" id="save-report-btn">
-            <i class="fas fa-save"></i> Save Report
-          </button>
-        </div>
-      </div>
-
-      <!-- Main measure/labor table in a scrollable container -->
-      <div class="table-responsive">
-        <table id="measure-labor-table">
-          <thead>
-            <tr>
-              <th style="width: 60px">Nbr.</th>
-              <th style="width: 100px">Style</th>
-              <th style="width: 150px">CONFIG</th>
-              <th style="width: 80px">W</th>
-              <th style="width: 80px">H</th>
-              <th style="width: 120px">Door Design<br />(Yes/No)</th>
-              <th style="width: 80px">PRIV<br />(Yes/No)</th>
-              <th style="width: 80px">EG<br />(Yes/No)</th>
-              <th style="width: 120px">Grids<br />(Yes/No)</th>
-              <th style="width: 120px">Grid Config.</th>
-              <th style="width: 80px">S/R<br />(Yes/No)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>
-                <input type="text" class="colA" readonly placeholder="(auto)" />
-              </td>
-              <td>
-                <select class="colB">
-                  <option value="">--Select--</option>
-                  <option value="sfd">sfd</option>
-                  <option value="hr">hr</option>
-                  <option value="sh">sh</option>
-                  <option value="cas">cas</option>
-                  <option value="dfd">dfd</option>
-                  <option value="sgd">sgd</option>
-                  <option value="pw">pw</option>
-                  <option value="mull">mull</option>
-                </select>
-              </td>
-              <td>
-                <!-- CONFIG can be either a dropdown or free text, depending on style -->
-                <input
-                  type="text"
-                  class="colC"
-                  placeholder="(depends on Style)"
-                  disabled
-                />
-              </td>
-              <td><input type="text" class="colD" placeholder="e.g. 36" /></td>
-              <td><input type="text" class="colE" placeholder="e.g. 80" /></td>
-
-              <!-- Door Design (Yes/No) -->
-              <td>
-                <select class="colF">
-                  <option value="">--Select--</option>
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-              </td>
-
-              <!-- PRIV (Yes/No) -->
-              <td>
-                <select class="colG">
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-              </td>
-
-              <!-- EG (Yes/No) -->
-              <td>
-                <select class="colH">
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-              </td>
-
-              <!-- Grids (Yes/No) -->
-              <td>
-                <select class="colI">
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-              </td>
-
-              <!-- Grid Config (text) -->
-              <td>
-                <input type="text" class="colJ" placeholder="e.g. 3/3" />
-              </td>
-
-              <!-- S/R (Yes/No) -->
-              <td>
-                <select class="colK">
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-              </td>
-
-              <td>
-                <button class="btn btn-delete" onclick="deleteRow(this)">
-                  Delete
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <!-- .table-responsive -->
-
-      <!-- Add Row button -->
-      <div style="margin-top: 1rem">
-        <button class="btn" id="add-row-btn">
-          <i class="fas fa-plus"></i> Add Row
-        </button>
-      </div>
-    </div>
-    <!-- .card -->
+<!-- ESTIMATE SECTION ON TOP -->
+<div class="card" style="margin-bottom: 2rem">
+  <div class="card-header">
+    <h2 class="card-title">Estimate</h2>
   </div>
-  <!-- Left side div -->
 
-  <!-- RIGHT SIDE (1/3): The estimate/summary panel -->
-  <div style="flex: 1; min-width: 300px">
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">Estimate</h2>
-      </div>
-      <div class="table-responsive">
-        <table style="width: 100%; border-collapse: collapse">
-          <thead>
-            <tr>
-              <th style="text-align: left">Category</th>
-              <th>Amount</th>
-              <th>QTY</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Windows -->
-            <tr>
-              <td
-                colspan="4"
-                style="font-weight: bold; background: #000; color: #fff"
-              >
-                WINDOWS
-              </td>
-            </tr>
-            <tr>
-              <td>Extra large 111+</td>
-              <td>$450</td>
-              <td>
-                <input
-                  type="number"
-                  class="qty"
-                  data-price="450"
-                  id="extra-large-qty"
-                  value="0"
-                  readonly
-                />
-              </td>
-              <td class="total">$0</td>
-            </tr>
-            <tr>
-              <td>Large 75-110</td>
-              <td>$360</td>
-              <td>
-                <input
-                  type="number"
-                  class="qty"
-                  data-price="360"
-                  id="large-qty"
-                  value="0"
-                  readonly
-                />
-              </td>
-              <td class="total">$0</td>
-            </tr>
-            <tr>
-              <td>Small 1-74</td>
-              <td>$300</td>
-              <td>
-                <input
-                  type="number"
-                  class="qty"
-                  data-price="300"
-                  id="small-qty"
-                  value="0"
-                  readonly
-                />
-              </td>
-              <td class="total">$0</td>
-            </tr>
-            <tr>
-              <td>Mull Door / Win</td>
-              <td>$40</td>
-              <td>
-                <input
-                  type="number"
-                  class="qty"
-                  data-price="40"
-                  id="mull-qty"
-                  value="0"
-                  readonly
-                />
-              </td>
-              <td class="total">$0</td>
-            </tr>
-
-            <!-- Doors -->
-            <tr>
-              <td
-                colspan="4"
-                style="font-weight: bold; background: #000; color: #fff"
-              >
-                DOORS
-              </td>
-            </tr>
-            <tr>
-              <td>SFD</td>
-              <td>$825</td>
-              <td>
-                <input
-                  type="number"
-                  class="qty"
-                  data-price="825"
-                  id="sfd-qty"
-                  value="0"
-                  readonly
-                />
-              </td>
-              <td class="total">$0</td>
-            </tr>
-            <tr>
-              <td>DFD</td>
-              <td>$900</td>
-              <td>
-                <input
-                  type="number"
-                  class="qty"
-                  data-price="900"
-                  id="dfd-qty"
-                  value="0"
-                  readonly
-                />
-              </td>
-              <td class="total">$0</td>
-            </tr>
-            <tr>
-              <td>SGD</td>
-              <td>$600</td>
-              <td>
-                <input
-                  type="number"
-                  class="qty"
-                  data-price="600"
-                  id="sgd-qty"
-                  value="0"
-                  readonly
-                />
-              </td>
-              <td class="total">$0</td>
-            </tr>
-            <tr>
-              <td>Extra Panels</td>
-              <td>$225</td>
-              <td>
-                <input
-                  type="number"
-                  class="qty"
-                  data-price="225"
-                  id="extra-panels-qty"
-                  value="0"
-                  readonly
-                />
-              </td>
-              <td class="total">$0</td>
-            </tr>
-            <tr>
-              <td>Door Design/panel</td>
-              <td>$1050</td>
-              <td>
-                <input
-                  type="number"
-                  class="qty"
-                  data-price="1050"
-                  id="door-design-qty"
-                  value="0"
-                  readonly
-                />
-              </td>
-              <td class="total">$0</td>
-            </tr>
-            <tr>
-              <td>Shutter Removal</td>
-              <td>$40</td>
-              <td>
-                <input
-                  type="number"
-                  class="qty"
-                  data-price="40"
-                  id="shutter-removal-qty"
-                  value="0"
-                  readonly
-                />
-              </td>
-              <td class="total">$0</td>
-            </tr>
-
-            <!-- Permit -->
-            <tr>
-              <td
-                colspan="4"
-                style="font-weight: bold; background: #000; color: #fff"
-              >
-                PERMIT
-              </td>
-            </tr>
-            <tr>
-              <td>PERMIT PREP $450 STANDARD</td>
-              <td>$450</td>
-              <td>1</td>
-              <td id="permit-fee">$450</td>
-            </tr>
-
-            <!-- Labor Total -->
-            <tr style="font-weight: bold">
-              <td>LABOR TOTAL</td>
-              <td colspan="2"></td>
-              <td id="labor-total">$0</td>
-            </tr>
-
-            <!-- Marketing -->
-            <tr>
-              <td
-                colspan="4"
-                style="font-weight: bold; background: #000; color: #fff"
-              >
-                MARKETING
-              </td>
-            </tr>
-            <tr>
-              <td>Referral/Marketing/Fee</td>
-              <td>$</td>
-              <td>
-                <input
-                  type="number"
-                  id="marketing-fee"
-                  value="0"
-                  min="0"
-                  onchange="updateTotals()"
-                />
-              </td>
-              <td id="marketing-total">$0</td>
-            </tr>
-
-            <!-- Material -->
-            <tr>
-              <td
-                colspan="4"
-                style="font-weight: bold; background: #000; color: #fff"
-              >
-                MATERIAL
-              </td>
-            </tr>
-            <tr>
-              <td>Material Cost</td>
-              <td>$</td>
-              <td>
-                <input
-                  type="number"
-                  id="material-cost"
-                  value="0"
-                  min="0"
-                  onchange="updateTotals()"
-                />
-              </td>
-              <td id="material-total">$0</td>
-            </tr>
-
-            <!-- Salesman Cost -->
-            <tr>
-              <td>Salesman Cost</td>
-              <td colspan="2"></td>
-              <td id="salesman-cost">$0</td>
-            </tr>
-
-            <!-- Markup -->
-            <tr>
-              <td>Markup</td>
-              <td>$</td>
-              <td>
-                <input
-                  type="number"
-                  id="markup-input"
-                  value="5000"
-                  min="0"
-                  onchange="updateTotals()"
-                />
-              </td>
-              <td id="markup">$5,000</td>
-            </tr>
-
-            <!-- Total Contract Amount -->
-            <tr style="font-weight: bold">
-              <td>TOTAL CONTRACT AMOUNT</td>
-              <td colspan="2"></td>
-              <td id="total-contract">$5,000</td>
-            </tr>
-
-            <!-- Commission -->
-            <tr>
-              <td>COMMISSION</td>
-              <td colspan="2"></td>
-              <td id="commission">$1,000</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+  <!-- Three-column layout: Windows, Doors, Permit/Marketing/Material -->
+  <!-- Using custom classes to ensure proper alignment -->
+  <div class="estimate-row">
+    <!-- WINDOWS COLUMN -->
+    <div class="estimate-col">
+      <table class="estimate-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>QTY</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Windows -->
+          <tr class="section-header">
+            <td colspan="4">WINDOWS</td>
+          </tr>
+          <tr>
+            <td>Extra large 111+</td>
+            <td>$450</td>
+            <td>
+              <input
+                type="number"
+                class="qty"
+                data-price="450"
+                id="extra-large-qty"
+                value="0"
+                readonly
+              />
+            </td>
+            <td class="total">$0</td>
+          </tr>
+          <tr>
+            <td>Large 75-110</td>
+            <td>$360</td>
+            <td>
+              <input
+                type="number"
+                class="qty"
+                data-price="360"
+                id="large-qty"
+                value="0"
+                readonly
+              />
+            </td>
+            <td class="total">$0</td>
+          </tr>
+          <tr>
+            <td>Small 1-74</td>
+            <td>$300</td>
+            <td>
+              <input
+                type="number"
+                class="qty"
+                data-price="300"
+                id="small-qty"
+                value="0"
+                readonly
+              />
+            </td>
+            <td class="total">$0</td>
+          </tr>
+          <tr>
+            <td>Mull Door / Win</td>
+            <td>$40</td>
+            <td>
+              <input
+                type="number"
+                class="qty"
+                data-price="40"
+                id="mull-qty"
+                value="0"
+                readonly
+              />
+            </td>
+            <td class="total">$0</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
+    <!-- END WINDOWS COLUMN -->
+
+    <!-- DOORS COLUMN -->
+    <div class="estimate-col">
+      <table class="estimate-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>QTY</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="section-header">
+            <td colspan="4">DOORS</td>
+          </tr>
+          <tr>
+            <td>SFD</td>
+            <td>$825</td>
+            <td>
+              <input
+                type="number"
+                class="qty"
+                data-price="825"
+                id="sfd-qty"
+                value="0"
+                readonly
+              />
+            </td>
+            <td class="total">$0</td>
+          </tr>
+          <tr>
+            <td>DFD</td>
+            <td>$900</td>
+            <td>
+              <input
+                type="number"
+                class="qty"
+                data-price="900"
+                id="dfd-qty"
+                value="0"
+                readonly
+              />
+            </td>
+            <td class="total">$0</td>
+          </tr>
+          <tr>
+            <td>SGD</td>
+            <td>$600</td>
+            <td>
+              <input
+                type="number"
+                class="qty"
+                data-price="600"
+                id="sgd-qty"
+                value="0"
+                readonly
+              />
+            </td>
+            <td class="total">$0</td>
+          </tr>
+          <tr>
+            <td>Extra Panels</td>
+            <td>$225</td>
+            <td>
+              <input
+                type="number"
+                class="qty"
+                data-price="225"
+                id="extra-panels-qty"
+                value="0"
+                readonly
+              />
+            </td>
+            <td class="total">$0</td>
+          </tr>
+          <tr>
+            <td>Door Design/panel</td>
+            <td>$1050</td>
+            <td>
+              <input
+                type="number"
+                class="qty"
+                data-price="1050"
+                id="door-design-qty"
+                value="0"
+                readonly
+              />
+            </td>
+            <td class="total">$0</td>
+          </tr>
+          <tr>
+            <td>Shutter Removal</td>
+            <td>$40</td>
+            <td>
+              <input
+                type="number"
+                class="qty"
+                data-price="40"
+                id="shutter-removal-qty"
+                value="0"
+                readonly
+              />
+            </td>
+            <td class="total">$0</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- END DOORS COLUMN -->
+
+    <!-- PERMIT / MARKETING / MATERIAL COLUMN -->
+    <div class="estimate-col">
+      <table class="estimate-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>QTY</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- PERMIT -->
+          <tr class="section-header">
+            <td colspan="4">PERMIT</td>
+          </tr>
+          <tr>
+            <td>PERMIT PREP</td>
+            <td>$450</td>
+            <td>1</td>
+            <td id="permit-fee">$450</td>
+          </tr>
+          <tr style="font-weight: bold">
+            <td>LABOR TOTAL</td>
+            <td colspan="2"></td>
+            <td id="labor-total">$0</td>
+          </tr>
+
+          <!-- MARKETING -->
+          <tr class="section-header">
+            <td colspan="4">MARKETING</td>
+          </tr>
+          <tr>
+            <td>Referral/Marketing/Fee</td>
+            <td>$</td>
+            <td>
+              <input type="number" id="marketing-fee" value="0" min="0" />
+            </td>
+            <td id="marketing-total">$0</td>
+          </tr>
+
+          <!-- MATERIAL -->
+          <tr class="section-header">
+            <td colspan="4">MATERIAL</td>
+          </tr>
+          <tr>
+            <td>Material Cost</td>
+            <td>$</td>
+            <td>
+              <input type="number" id="material-cost" value="0" min="0" />
+            </td>
+            <td id="material-total">$0</td>
+          </tr>
+          <tr>
+            <td>Salesman Cost</td>
+            <td colspan="2"></td>
+            <td id="salesman-cost">$0</td>
+          </tr>
+          <tr>
+            <td>Markup</td>
+            <td>$</td>
+            <td>
+              <input type="number" id="markup-input" value="5000" min="0" />
+            </td>
+            <td id="markup">$5,000</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- END PERMIT / MARKETING / MATERIAL COLUMN -->
   </div>
-  <!-- Right side div -->
+
+  <!-- TOTAL CONTRACT AMOUNT + COMMISSION AT THE BOTTOM -->
+  <div style="margin-top: 1rem">
+    <table style="width: 100%; border-collapse: collapse">
+      <tbody>
+        <tr style="font-weight: bold; background: #f5f5f5">
+          <td style="padding: 0.75rem">TOTAL CONTRACT AMOUNT</td>
+          <td colspan="2"></td>
+          <td id="total-contract" style="text-align: right; padding: 0.75rem">
+            $5,000
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 0.75rem">COMMISSION</td>
+          <td colspan="2"></td>
+          <td id="commission" style="text-align: right; padding: 0.75rem">
+            $1,000
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </div>
-<!-- End of flex container -->
+<!-- END ESTIMATE SECTION -->
+
+<!-- MEASUREMENT / LABOR TABLE SECTION -->
+<div class="card">
+  <!-- Card header: Title + template buttons -->
+  <div class="card-header" style="justify-content: space-between">
+    <h2 class="card-title">Measurements</h2>
+    <div>
+      <button class="btn btn-sm" id="copy-template-btn">
+        Copy from Template
+      </button>
+      <button class="btn btn-sm" id="create-template-btn">
+        Create Template
+      </button>
+      <!-- Save Report Button -->
+      <button class="btn" id="save-report-btn">
+        <i class="fas fa-save"></i> Save Report
+      </button>
+    </div>
+  </div>
+
+  <!-- Use table-layout: fixed to enforce column widths -->
+  <table
+    id="measure-labor-table"
+    style="width: 100%; border-collapse: collapse; table-layout: fixed"
+  >
+    <thead>
+      <tr>
+        <!-- 12 columns total -->
+        <th style="width: 40px">Nbr.</th>
+        <th style="width: 80px">Style</th>
+        <th style="width: 80px">CONFIG</th>
+        <th style="width: 40px">W</th>
+        <th style="width: 40px">H</th>
+        <th style="width: 90px">Door<br />Design</th>
+        <th style="width: 60px">PRIV</th>
+        <th style="width: 60px">EG</th>
+        <th style="width: 80px">Grids</th>
+        <th style="width: 80px">Grid<br />Config.</th>
+        <th style="width: 60px">S/R</th>
+        <th style="width: 60px">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <!-- 12 cells -->
+        <td>
+          <input
+            type="text"
+            class="colA"
+            style="width: 100%"
+            readonly
+            placeholder="(auto)"
+          />
+        </td>
+        <td>
+          <select class="colB" style="width: 100%">
+            <option value="">--Select--</option>
+            <option value="sfd">sfd</option>
+            <option value="hr">hr</option>
+            <option value="sh">sh</option>
+            <option value="cas">cas</option>
+            <option value="dfd">dfd</option>
+            <option value="sgd">sgd</option>
+            <option value="pw">pw</option>
+            <option value="mull">mull</option>
+          </select>
+        </td>
+        <td>
+          <!-- CONFIG (varies by style) -->
+          <input
+            type="text"
+            class="colC"
+            style="width: 100%"
+            placeholder="(depends on Style)"
+            disabled
+          />
+        </td>
+        <td>
+          <input
+            type="text"
+            class="colD"
+            style="width: 100%"
+            placeholder="36"
+          />
+        </td>
+        <td>
+          <input
+            type="text"
+            class="colE"
+            style="width: 100%"
+            placeholder="80"
+          />
+        </td>
+        <td>
+          <select class="colF" style="width: 100%">
+            <option value="">--Select--</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </td>
+        <!-- PRIV => default "No" -->
+        <td>
+          <select class="colG" style="width: 100%">
+            <option value="Yes">Yes</option>
+            <option value="No" selected>No</option>
+          </select>
+        </td>
+        <!-- EG => default "No" -->
+        <td>
+          <select class="colH" style="width: 100%">
+            <option value="Yes">Yes</option>
+            <option value="No" selected>No</option>
+          </select>
+        </td>
+        <!-- Grids => default "No" -->
+        <td>
+          <select class="colI" style="width: 100%">
+            <option value="Yes">Yes</option>
+            <option value="No" selected>No</option>
+          </select>
+        </td>
+        <td>
+          <input
+            type="text"
+            class="colJ"
+            style="width: 100%"
+            placeholder="3/3"
+          />
+        </td>
+        <td>
+          <select class="colK" style="width: 100%">
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </td>
+        <td>
+          <button class="btn btn-delete" onclick="deleteRow(this)">
+            Delete
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Add Row button below the table -->
+  <div style="margin-top: 1rem">
+    <button class="btn" id="add-row-btn">
+      <i class="fas fa-plus"></i> Add Row
+    </button>
+  </div>
+</div>
+<!-- END MEASUREMENT / LABOR TABLE SECTION -->
 
 <script>
   // Maps Style -> possible CONFIGS (for the CONFIG column C).

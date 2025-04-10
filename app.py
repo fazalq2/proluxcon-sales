@@ -115,14 +115,23 @@ class User(db.Model):
     role_id = db.Column(db.Integer, db.ForeignKey("role.id"), nullable=False)
     role = db.relationship("Role", backref="users")
 
-    def __init__(self, name, email, password, role_id):
+    # ✅ Controls if user is active
+    is_active = db.Column(db.Boolean, default=True)
+
+    # ✅ Forces password change on first login
+    must_change_password = db.Column(db.Boolean, default=False)
+
+    def __init__(
+        self, name, email, password, role_id, is_active=True, must_change_password=False
+    ):
         self.name = name
-        self.email = email
+        self.email = email.lower()  # Normalize email
         self.password_hash = bcrypt.hash(password)
         self.role_id = role_id
+        self.is_active = is_active
+        self.must_change_password = must_change_password
 
     def verify_password(self, password):
-        """Check the given password against the stored hash."""
         return bcrypt.verify(password, self.password_hash)
 
 
@@ -577,6 +586,60 @@ def role_required(allowed_roles):
     return decorator
 
 
+def get_dashboard_data_admin():
+    # Stats across all users
+    total_reports = Report.query.count()
+    total_jobs = Job.query.count()
+    completed_jobs = Job.query.filter_by(status="completed").count()
+    pending_jobs = Job.query.filter_by(status="pending").count()
+    in_progress_jobs = Job.query.filter_by(status="in_progress").count()
+    total_clients = Client.query.count()
+
+    stats = {
+        "total_reports": total_reports,
+        "total_jobs": total_jobs,
+        "completed_jobs": completed_jobs,
+        "pending_jobs": pending_jobs,
+        "in_progress_jobs": in_progress_jobs,
+        "total_clients": total_clients,
+    }
+
+    # Most recent jobs (all users)
+    recent_jobs = Job.query.order_by(Job.updated_at.desc()).limit(10).all()
+
+    # Collect client info
+    client_ids = [job.client_id for job in recent_jobs]
+    clients = {
+        client.id: client
+        for client in Client.query.filter(Client.id.in_(client_ids)).all()
+    }
+
+    jobs_data = []
+    for job in recent_jobs:
+        client = clients.get(job.client_id)
+        jobs_data.append(
+            {
+                "job_id": job.id,
+                "job_number": job.job_number,
+                "name": job.name,
+                "client_id": client.id if client else None,
+                "client_name": client.name if client else "Unknown",
+                "client_phone": client.phone if client else None,
+                "site_confirmation": job.site_confirmation_status,
+                "pre_installation": job.pre_installation_status,
+                "post_installation": job.post_installation_status,
+                "status": job.status,
+                "updated_at": job.updated_at,
+            }
+        )
+
+    return {
+        "stats": stats,
+        "recent_jobs": jobs_data,
+        "settings": None,  # Admin doesn't need personal dashboard settings
+    }
+
+
 # -----------------------------------------------------------
 # Authentication Routes
 # -----------------------------------------------------------
@@ -587,16 +650,28 @@ def index():
 
 @app.route("/login", methods=["POST"])
 def login():
-    email = request.form.get("login_email")
+    email = request.form.get("login_email", "").strip().lower()
     password = request.form.get("login_password")
 
-    user = User.query.filter_by(email=email).first()
+    # Case-insensitive email lookup
+    user = User.query.filter(func.lower(User.email) == email).first()
 
-    if user and user.verify_password(password):
-        session["user_id"] = user.id
-        session["role"] = user.role.name
-        flash("Login successful!", "success")
-        return redirect(url_for("dashboard"))
+    if user:
+        if not user.is_active:
+            flash("Your account is awaiting admin approval.", "error")
+            return redirect(url_for("index"))
+
+        if user.verify_password(password):
+            session["user_id"] = user.id
+            session["role"] = user.role.name
+
+            # Force password change if required
+            if user.must_change_password:
+                flash("Please change your password before continuing.", "warning")
+                return redirect(url_for("change_password"))
+
+            flash("Login successful!", "success")
+            return redirect(url_for("dashboard"))
 
     flash("Invalid email or password", "error")
     return redirect(url_for("index"))
@@ -629,11 +704,64 @@ def signup():
     return redirect(url_for("dashboard"))
 
 
+@app.route("/change-password", methods=["GET", "POST"])
+def change_password():
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    user = User.query.get(session["user_id"])
+
+    if request.method == "POST":
+        new_password = request.form.get("new_password")
+        confirm_password = request.form.get("confirm_password")
+
+        if not new_password or new_password != confirm_password:
+            flash("Passwords do not match or are empty.", "error")
+            return redirect(url_for("change_password"))
+
+        user.password_hash = bcrypt.hash(new_password)
+        user.must_change_password = False
+        db.session.commit()
+        flash("Password changed successfully!", "success")
+        return redirect(url_for("dashboard"))
+
+    return render_template("change_password.html")
+
+
 @app.route("/logout")
 def logout():
     session.clear()
     flash("You have been logged out.", "info")
     return redirect(url_for("index"))
+
+
+@app.route("/admin/pending-users")
+@role_required(["admin"])
+def view_pending_users():
+    pending_users = User.query.filter_by(is_active=False).all()
+    return render_template("pending_users.html", users=pending_users)
+
+
+@app.route("/admin/activate-user/<int:user_id>", methods=["POST"])
+@role_required(["admin"])
+def activate_user(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("view_pending_users"))
+
+    user.is_active = True
+    db.session.commit()
+    flash(f"User '{user.name}' has been activated.", "success")
+    return redirect(url_for("view_pending_users"))
+
+
+@app.route("/admin")
+@role_required(["admin"])
+def admin_dashboard():
+    all_users = User.query.order_by(User.id.desc()).all()
+    return render_template("admin.html", users=all_users)
 
 
 @app.route("/dashboard")
@@ -642,17 +770,18 @@ def dashboard():
         flash("Please log in first.", "error")
         return redirect(url_for("index"))
 
-    # Get the current user's ID
     user_id = session["user_id"]
+    role = session.get("role")
 
-    # Get dashboard data using our helper function
-    dashboard_data = get_dashboard_data(user_id)
+    if role == "admin":
+        dashboard_data = get_dashboard_data_admin()
+    else:
+        dashboard_data = get_dashboard_data(user_id)
 
-    # Render the dashboard template with the data
     return render_template(
         "dashboard.html",
         stats=dashboard_data["stats"],
-        settings=dashboard_data["settings"],
+        settings=dashboard_data.get("settings"),
         recent_jobs=dashboard_data["recent_jobs"],
     )
 
@@ -1261,7 +1390,7 @@ def save_report():
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
-# Add this route to your Flask app
+# Test report saving Flask app
 @app.route("/test_save", methods=["POST"])
 def test_save():
     """A minimal test endpoint to verify basic save functionality"""
@@ -1305,6 +1434,109 @@ def test_save():
         logger.error(f"Database error: {str(e)}")
         db.session.rollback()
         return jsonify({"error": f"Database error: {str(e)}"}), 500
+
+
+# -----------------------------------------------------------
+# GHL Webhook
+# -----------------------------------------------------------
+from sqlalchemy import func  # add this at the top if not already imported
+
+
+@app.route("/webhook/opportunity", methods=["POST"])
+def receive_ghl_opportunity():
+    try:
+        data = request.get_json()
+        logger.info(f"Received GHL opportunity webhook data: {data}")
+
+        # Extract contact info
+        name = (
+            data.get("full_name")
+            or f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
+        )
+        phone = data.get("phone")
+        email = data.get("email")
+        job_name = data.get("opportunity_name", "New Job")
+        description = f"Pipeline: {data.get('pipeline_name', 'Unknown')}, Status: {data.get('status', 'N/A')}"
+
+        # Assigned user email from GHL
+        assigned_user_email = data.get("user", {}).get("email")
+        if assigned_user_email:
+            assigned_user_email = assigned_user_email.lower()
+
+        if not name or not assigned_user_email:
+            logger.warning("Missing name or assigned_user_email")
+            return jsonify({"error": "Missing name or assigned_user_email"}), 400
+
+        # Case-insensitive email lookup
+        user = User.query.filter(func.lower(User.email) == assigned_user_email).first()
+
+        if not user:
+            logger.warning(f"Assigned user not found: {assigned_user_email}")
+            sales_role = Role.query.filter_by(name="sales").first()
+
+            if not sales_role:
+                logger.error("Sales role not found. Cannot assign role to new user.")
+                return jsonify({"error": "Sales role not defined in system"}), 500
+
+            # Construct fallback name
+            first_name = data.get("user", {}).get("firstName", "")
+            last_name = data.get("user", {}).get("lastName", "")
+            generated_name = f"{first_name} {last_name}".strip() or assigned_user_email
+
+            # Auto-create an inactive user
+            user = User(
+                name=generated_name,
+                email=assigned_user_email,
+                password="Temp@1234",  # Placeholder (can later enforce reset)
+                role_id=sales_role.id,
+                is_active=True,
+                must_change_password=True,
+            )
+            user.is_active = False  # New field you must add to your User model
+            db.session.add(user)
+            db.session.flush()
+            logger.info(f"Auto-created inactive user: {user.email}")
+
+        # Create client
+        client = Client(name=name, phone=phone, email=email, user_id=user.id)
+        db.session.add(client)
+        db.session.flush()
+
+        # Generate next job number
+        latest_job = Job.query.order_by(Job.id.desc()).first()
+        next_job_number = f"JOB-{latest_job.id + 1:05d}" if latest_job else "JOB-00001"
+
+        # Create job
+        job = Job(
+            job_number=next_job_number,
+            name=job_name,
+            client_id=client.id,
+            user_id=user.id,
+            description=description,
+        )
+        db.session.add(job)
+        db.session.flush()
+
+        # Create 3 job status stages
+        for stage in ["site_confirmation", "pre_installation", "post_installation"]:
+            job_status = JobStatus(job_id=job.id, stage=stage, status="incomplete")
+            db.session.add(job_status)
+
+        db.session.commit()
+        logger.info(
+            f"Created client '{client.name}', job '{job.job_number}' assigned to '{user.email}'"
+        )
+
+        return (
+            jsonify({"message": "Client, job, and statuses created successfully"}),
+            200,
+        )
+
+    except Exception as e:
+        logger.error(f"Webhook error: {str(e)}")
+        logger.error(traceback.format_exc())
+        db.session.rollback()
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 
 # -----------------------------------------------------------

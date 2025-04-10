@@ -1,0 +1,30 @@
+{% extends "base.html" %} {% block content %}
+<h2>Pending Users</h2>
+
+{% if users %}
+<table>
+  <tr>
+    <th>Name</th>
+    <th>Email</th>
+    <th>Role</th>
+    <th>Activate</th>
+  </tr>
+  {% for user in users %}
+  <tr>
+    <td>{{ user.name }}</td>
+    <td>{{ user.email }}</td>
+    <td>{{ user.role.name }}</td>
+    <td>
+      <form
+        action="{{ url_for('activate_user', user_id=user.id) }}"
+        method="post"
+      >
+        <button type="submit">Activate</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>No pending users found.</p>
+{% endif %} {% endblock %}

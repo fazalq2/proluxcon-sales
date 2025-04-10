@@ -5,40 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ProLuxCon</title>
 
-    <!-- Include Font Awesome (icons) -->
+    <!-- Font Awesome -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
-
-    <!-- Link your custom stylesheet -->
+    <!-- Custom CSS -->
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='styles.css') }}"
     />
 
-    <!-- Add JavaScript for dropdown behavior -->
+    <!-- JS for Dropdown Behavior -->
     <script>
       document.addEventListener("DOMContentLoaded", function () {
         const profileMenu = document.querySelector(".profile-menu");
         const profileLink = document.querySelector(".profile-link");
 
-        profileLink.addEventListener("click", function (event) {
-          event.preventDefault(); // Prevent default anchor behavior
-          profileMenu.classList.toggle("show");
-        });
+        if (profileLink && profileMenu) {
+          profileLink.addEventListener("click", function (event) {
+            event.preventDefault();
+            profileMenu.classList.toggle("show");
+          });
 
-        // Close dropdown if clicked outside
-        document.addEventListener("click", function (event) {
-          if (
-            !profileLink.contains(event.target) &&
-            !profileMenu.contains(event.target)
-          ) {
-            profileMenu.classList.remove("show");
-          }
-        });
+          document.addEventListener("click", function (event) {
+            if (
+              !profileLink.contains(event.target) &&
+              !profileMenu.contains(event.target)
+            ) {
+              profileMenu.classList.remove("show");
+            }
+          });
+        }
 
-        // Add the same behavior for other dropdowns
         const dropdownLinks = document.querySelectorAll(".dropdown-link");
         dropdownLinks.forEach((link) => {
           const menu = link.nextElementSibling;
@@ -58,13 +57,11 @@
     </script>
 
     <style>
-      /* Dropdown Styling */
       .profile-container,
       .dropdown-container {
         position: relative;
         display: inline-block;
       }
-
       .profile-menu,
       .dropdown-menu {
         display: none;
@@ -77,12 +74,10 @@
         min-width: 160px;
         z-index: 1000;
       }
-
       .profile-menu.show,
       .dropdown-menu.show {
         display: block;
       }
-
       .profile-menu a,
       .dropdown-menu a {
         display: block;
@@ -90,13 +85,13 @@
         text-decoration: none;
         color: #333;
       }
-
       .profile-menu a:hover,
       .dropdown-menu a:hover {
         background-color: #f4f4f4;
       }
     </style>
   </head>
+
   <body>
     <!-- Header -->
     <header>
@@ -109,21 +104,19 @@
               style="height: 40px; width: auto"
             />
           </a>
+
+          {% if session.get("user_id") and not hide_nav %}
           <ul class="nav-links">
             <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-
-            <!-- Added Measurements/Estimates Link -->
             <li>
               <a href="{{ url_for('measure_labor') }}"
                 ><i class="fas fa-ruler-combined"></i> Measure/Labor</a
               >
             </li>
-
-            <!-- Installation Dropdown -->
             <li class="dropdown-container">
-              <a href="#" class="dropdown-link">
-                <i class="fas fa-tools"></i> Installation
-              </a>
+              <a href="#" class="dropdown-link"
+                ><i class="fas fa-tools"></i> Installation</a
+              >
               <div class="dropdown-menu">
                 <a href="{{ url_for('site_confirmation') }}"
                   ><i class="fas fa-clipboard-check"></i> Site Confirmation</a
@@ -136,7 +129,6 @@
                 >
               </div>
             </li>
-
             <li>
               <a href="{{ url_for('reports') }}"
                 ><i class="fas fa-file-alt"></i> Reports</a
@@ -153,11 +145,18 @@
               >
             </li>
 
-            <!-- Profile Dropdown -->
+            {% if session.get("role") == "admin" %}
+            <li>
+              <a href="{{ url_for('view_pending_users') }}"
+                ><i class="fas fa-user-shield"></i> Admin Panel</a
+              >
+            </li>
+            {% endif %}
+
             <li class="profile-container">
-              <a href="#" class="profile-link">
-                <i class="fas fa-user-circle"></i> Profile
-              </a>
+              <a href="#" class="profile-link"
+                ><i class="fas fa-user-circle"></i> Profile</a
+              >
               <div class="profile-menu">
                 <a href="{{ url_for('profile') }}"
                   ><i class="fas fa-user"></i> Profile Settings</a
@@ -168,6 +167,7 @@
               </div>
             </li>
           </ul>
+          {% endif %}
         </nav>
       </div>
     </header>

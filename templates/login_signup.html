@@ -1,93 +1,165 @@
-{% extends "base.html" %} {% block content %}
-<h1 class="page-title">Welcome to ProLuxCon</h1>
+{% set hide_nav = true %} {% extends "base.html" %} {% block content %}
+<div class="container" style="max-width: 900px; margin: auto">
+  <h1 class="page-title" style="text-align: center; margin-bottom: 2rem">
+    Welcome to ProLuxCon
+  </h1>
 
-<!-- Flash Messages -->
-{% with messages = get_flashed_messages(with_categories=True) %} {% if messages
-%}
-<div class="flash-messages">
-  {% for category, message in messages %}
-  <div class="alert alert-{{ category }}" style="margin: 1rem 0">
-    {{ message }}
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=True) %} {% if
+  messages %}
+  <div class="flash-messages">
+    {% for category, message in messages %}
+    <div class="flash-message {{ category }}">{{ message }}</div>
+    {% endfor %}
   </div>
-  {% endfor %}
-</div>
-{% endif %} {% endwith %}
+  {% endif %} {% endwith %}
 
-<div
-  class="stats-container"
-  style="display: flex; gap: 2rem; margin-top: 1rem; flex-wrap: wrap"
->
-  <!-- Login Form -->
-  <div class="card" style="flex: 1; min-width: 300px">
-    <div class="card-header">
-      <h2 class="card-title">Login</h2>
+  <!-- Auth Cards Container -->
+  <div class="stats-container" style="gap: 2rem">
+    <!-- Login Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Login</h2>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('login') }}">
+          <div class="form-group">
+            <label for="login-email">Email</label>
+            <input
+              type="email"
+              class="form-control"
+              id="login-email"
+              name="login_email"
+              placeholder="Enter your email"
+              required
+            />
+          </div>
+
+          <div class="form-group" style="position: relative">
+            <label for="login-password">Password</label>
+            <input
+              type="password"
+              class="form-control"
+              id="login-password"
+              name="login_password"
+              placeholder="Enter your password"
+              required
+            />
+            <i
+              class="fas fa-eye toggle-password"
+              toggle="#login-password"
+              style="
+                position: absolute;
+                top: 38px;
+                right: 10px;
+                cursor: pointer;
+              "
+            ></i>
+          </div>
+
+          <button type="submit" class="btn" style="width: 100%">Login</button>
+        </form>
+      </div>
     </div>
-    <form
-      method="POST"
-      action="{{ url_for('login') }}"
-      style="display: flex; flex-direction: column; gap: 1rem"
-    >
-      <label for="login-email">Email</label>
-      <input
-        type="email"
-        id="login-email"
-        name="login_email"
-        placeholder="Enter your email"
-        required
-      />
 
-      <label for="login-password">Password</label>
-      <input
-        type="password"
-        id="login-password"
-        name="login_password"
-        placeholder="Enter your password"
-        required
-      />
+    <!-- Signup Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Sign Up</h2>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('signup') }}">
+          <div class="form-group">
+            <label for="signup-name">Full Name</label>
+            <input
+              type="text"
+              class="form-control"
+              id="signup-name"
+              name="signup_name"
+              placeholder="Enter your full name"
+              required
+            />
+          </div>
 
-      <button type="submit" class="btn">Login</button>
-    </form>
-  </div>
+          <div class="form-group">
+            <label for="signup-email">Email</label>
+            <input
+              type="email"
+              class="form-control"
+              id="signup-email"
+              name="signup_email"
+              placeholder="Enter your email"
+              required
+            />
+          </div>
 
-  <!-- Signup Form -->
-  <div class="card" style="flex: 1; min-width: 300px">
-    <div class="card-header">
-      <h2 class="card-title">Sign Up</h2>
+          <div class="form-group" style="position: relative">
+            <label for="signup-password">Password</label>
+            <input
+              type="password"
+              class="form-control"
+              id="signup-password"
+              name="signup_password"
+              placeholder="Create a password"
+              required
+            />
+            <i
+              class="fas fa-eye toggle-password"
+              toggle="#signup-password"
+              style="
+                position: absolute;
+                top: 38px;
+                right: 10px;
+                cursor: pointer;
+              "
+            ></i>
+            <small
+              id="signup-password-strength"
+              style="display: block; margin-top: 5px"
+            ></small>
+          </div>
+
+          <button type="submit" class="btn" style="width: 100%">Sign Up</button>
+        </form>
+      </div>
     </div>
-    <form
-      method="POST"
-      action="{{ url_for('signup') }}"
-      style="display: flex; flex-direction: column; gap: 1rem"
-    >
-      <label for="signup-name">Full Name</label>
-      <input
-        type="text"
-        id="signup-name"
-        name="signup_name"
-        placeholder="Enter your full name"
-        required
-      />
-
-      <label for="signup-email">Email</label>
-      <input
-        type="email"
-        id="signup-email"
-        name="signup_email"
-        placeholder="Enter your email"
-        required
-      />
-
-      <label for="signup-password">Password</label>
-      <input
-        type="password"
-        id="signup-password"
-        name="signup_password"
-        placeholder="Create a password"
-        required
-      />
-
-      <button type="submit" class="btn">Sign Up</button>
-    </form>
   </div>
 </div>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const passwordInput = document.getElementById("signup-password");
+    const strengthText = document.getElementById("signup-password-strength");
+
+    // Password strength logic
+    passwordInput.addEventListener("input", function () {
+      const value = passwordInput.value;
+      let strength = 0;
+
+      if (value.length >= 8) strength++;
+      if (/[A-Z]/.test(value)) strength++;
+      if (/[a-z]/.test(value)) strength++;
+      if (/[0-9]/.test(value)) strength++;
+      if (/[^A-Za-z0-9]/.test(value)) strength++;
+
+      const levels = ["Very Weak", "Weak", "Moderate", "Strong", "Very Strong"];
+      const colors = ["#e74c3c", "#f39c12", "#f1c40f", "#27ae60", "#2ecc71"];
+
+      strengthText.textContent = levels[strength - 1] || "";
+      strengthText.style.color = colors[strength - 1] || "#333";
+    });
+
+    // Toggle visibility
+    const toggleIcons = document.querySelectorAll(".toggle-password");
+    toggleIcons.forEach((icon) => {
+      icon.addEventListener("click", function () {
+        const input = document.querySelector(this.getAttribute("toggle"));
+        const isPassword = input.getAttribute("type") === "password";
+        input.setAttribute("type", isPassword ? "text" : "password");
+        this.classList.toggle("fa-eye");
+        this.classList.toggle("fa-eye-slash");
+      });
+    });
+  });
+</script>
+
 {% endblock %}

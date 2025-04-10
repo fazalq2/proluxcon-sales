@@ -584,3 +584,74 @@ select.form-control {
   font-size: 1.25rem;
   padding: 0.5rem 0;
 }
+/* === ESTIMATE LAYOUT CLASSES === */
+
+/* Flex container to hold Windows/Doors/Permit side by side */
+.estimate-row {
+  display: flex;
+  flex-wrap: nowrap; /* ensures they stay side-by-side rather than wrapping */
+  gap: 2rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+/* Each table in a column */
+.estimate-col {
+  flex: 1;
+  min-width: 300px;
+}
+
+/* Force consistent column widths and prevent weird wrapping */
+.estimate-table {
+  width: 100%;
+  table-layout: fixed; /* important for consistent widths */
+  border-collapse: collapse;
+}
+
+.estimate-table th,
+.estimate-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  white-space: nowrap; /* prevents wrapping of short headers like "QTY" */
+}
+
+.estimate-table thead th {
+  background-color: #f5f7fa;
+  font-weight: 600;
+  /* If you want text centered for column heads:
+   * text-align: center;
+   */
+}
+
+/* Example: four columns (Category, Amount, QTY, Total) */
+.estimate-table th:nth-child(1),
+.estimate-table td:nth-child(1) {
+  width: 40%;
+}
+
+.estimate-table th:nth-child(2),
+.estimate-table td:nth-child(2) {
+  width: 20%;
+  text-align: right;
+}
+
+.estimate-table th:nth-child(3),
+.estimate-table td:nth-child(3) {
+  width: 15%;
+  text-align: center;
+}
+
+.estimate-table th:nth-child(4),
+.estimate-table td:nth-child(4) {
+  width: 25%;
+  text-align: right;
+}
+
+/* Black row styling for section labels (WINDOWS, DOORS, etc.) */
+.estimate-table tr.section-header td {
+  font-weight: bold;
+  background: #000;
+  color: #fff;
+  /* Or any styling you prefer for that black header row */
+}
