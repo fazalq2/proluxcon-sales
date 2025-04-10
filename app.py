@@ -9,6 +9,9 @@ from flask_login import login_required, current_user
 import logging
 import traceback
 from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Set up logging - add this near the top of your file after imports
 logging.basicConfig(
