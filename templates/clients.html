@@ -1,4 +1,56 @@
+<!-- templates/clients.html -->
 {% extends "base.html" %} {% block content %}
+
 <h1>Clients</h1>
-<p>Manage or view all your client records here.</p>
+
+<table border="1" cellpadding="5" cellspacing="0">
+  <thead>
+    <tr>
+      <th>Client Name</th>
+      <th>Phone</th>
+      <th>Email</th>
+      <th>Assigned Sales Rep</th>
+      <th>Jobs</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for client in clients %}
+    <tr>
+      <td>{{ client.name }}</td>
+      <td>{{ client.phone or "" }}</td>
+      <td>{{ client.email or "" }}</td>
+      <td>
+        {% if client.user %} {{ client.user.name }} {% else %}
+        <em>No user assigned</em>
+        {% endif %}
+      </td>
+      <td>
+        {% if client.jobs %}
+        <ul>
+          {% for job in client.jobs %}
+          <li>
+            <strong>{{ job.job_number }}</strong> - {{ job.name }} ({{
+            job.status }}) {% if role == 'admin' %}
+            <br />
+            <small
+              >Assigned to: {{ job.user.name if job.user else 'No user' }}
+            </small>
+            {% endif %} {# Optionally show the job description, which might
+            contain the "Pipeline" or "Status" added from the GHL webhook #} {%
+            if job.description %}
+            <br />
+            <small>Description: {{ job.description }}</small>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <em>No jobs.</em>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
 {% endblock %}

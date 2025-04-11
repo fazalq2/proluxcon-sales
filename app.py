@@ -1308,9 +1308,25 @@ def settings():
 
 # 3) Clients (Admin & Sales)
 @app.route("/clients")
-# @role_required(["admin", "sales"])
 def clients():
-    return render_template("clients.html")
+    """
+    Show all clients to admin;
+    sales users only see their own clients.
+    """
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    user_id = session["user_id"]
+    role = session.get("role")
+
+    # If admin, show all clients; if sales, only the logged-in user’s.
+    if role == "admin":
+        all_clients = Client.query.all()
+    else:
+        all_clients = Client.query.filter_by(user_id=user_id).all()
+
+    return render_template("clients.html", clients=all_clients, role=role)
 
 
 # -----------------------------------------------------------
@@ -2179,8 +2195,9 @@ def export_report_excel(report_id):
                 "bold": True,
                 "align": "center",
                 "bg_color": "#3498db",
-                "color": "white",
+                "font_color": "white",
                 "border": 1,
+                "pattern": 1,  # <-- Important so that bg_color is actually applied
             }
         )
 
