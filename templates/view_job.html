@@ -1,0 +1,247 @@
+{% extends "base.html" %} {% block content %}
+
+<h1 class="page-title">Job: {{ job.job_number }}</h1>
+
+<div class="action-buttons" style="margin-bottom: 20px">
+  <a href="{{ url_for('all_jobs') }}" class="btn">
+    <i class="fas fa-arrow-left"></i> Back to Jobs
+  </a>
+  <a href="{{ url_for('edit_job', job_id=job.id) }}" class="btn">
+    <i class="fas fa-edit"></i> Edit Job
+  </a>
+  <a href="{{ url_for('job_timeline', job_id=job.id) }}" class="btn">
+    <i class="fas fa-history"></i> View Timeline
+  </a>
+</div>
+
+<!-- Job Details Card -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Job Details</h2>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <p><strong>Job Number:</strong> {{ job.job_number }}</p>
+        <p><strong>Name:</strong> {{ job.name }}</p>
+        <p>
+          <strong>Status:</strong>
+          <span class="status-badge {{ job.status }}"
+            >{{ job.status|title }}</span
+          >
+        </p>
+        <p>
+          <strong>Created:</strong> {{ job.created_at.strftime('%m/%d/%Y') }}
+        </p>
+        <p>
+          <strong>Last Updated:</strong> {{ job.updated_at.strftime('%m/%d/%Y')
+          }}
+        </p>
+      </div>
+      <div class="col-md-6">
+        <p>
+          <strong>Client:</strong>
+          {% if job.client_id %} {{ job.client.name }} {% if job.client.phone %}
+          (Phone: {{ job.client.phone }}) {% endif %} {% else %} Not assigned {%
+          endif %}
+        </p>
+        <p>
+          <strong>Description:</strong> {{ job.description or "No description
+          provided" }}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Installation Status Card -->
+<div class="card" style="margin-top: 2rem">
+  <div class="card-header">
+    <h2 class="card-title">Installation Status</h2>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4">
+        <div class="installation-status">
+          <h3>Site Confirmation</h3>
+          <div class="status-badge {{ job.site_confirmation_status }}">
+            {{ job.site_confirmation_status|title }}
+          </div>
+          <a
+            href="{{ url_for('site_confirmation') }}?job_id={{ job.id }}"
+            class="btn btn-sm"
+            style="margin-top: 10px"
+          >
+            Update
+          </a>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="installation-status">
+          <h3>Pre-Installation</h3>
+          <div class="status-badge {{ job.pre_installation_status }}">
+            {{ job.pre_installation_status|title }}
+          </div>
+          <a
+            href="{{ url_for('pre_installation') }}?job_id={{ job.id }}"
+            class="btn btn-sm"
+            style="margin-top: 10px"
+          >
+            Update
+          </a>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="installation-status">
+          <h3>Post-Installation</h3>
+          <div class="status-badge {{ job.post_installation_status }}">
+            {{ job.post_installation_status|title }}
+          </div>
+          <a
+            href="{{ url_for('post_installation') }}?job_id={{ job.id }}"
+            class="btn btn-sm"
+            style="margin-top: 10px"
+          >
+            Update
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reports Section -->
+<div class="card" style="margin-top: 2rem">
+  <div class="card-header">
+    <h2 class="card-title">Reports</h2>
+    <a href="/create-report/{{ job.id }}" class="btn btn-sm">
+      <i class="fas fa-plus"></i> Create Report
+    </a>
+  </div>
+  <div class="card-body">
+    {% if reports %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Report ID</th>
+            <th>Date Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for report in reports %}
+          <tr>
+            <td>{{ report.id }}</td>
+            <td>{{ report.created_at.strftime('%m/%d/%Y %I:%M %p') }}</td>
+            <td>
+              <a href="/view_report/{{ report.id }}" class="btn btn-sm">View</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="text-center" style="margin-top: 1rem">
+      <a href="/job_reports/{{ job.id }}" class="btn">View All Reports</a>
+    </div>
+    {% else %}
+    <p class="text-center">No reports found for this job.</p>
+    <div class="text-center">
+      <a href="/create-report/{{ job.id }}" class="btn">Create First Report</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Update Job From Reports Button -->
+<div style="margin-top: 2rem; text-align: center">
+  <form
+    action="{{ url_for('update_job_from_reports', job_id=job.id) }}"
+    method="POST"
+  >
+    <button type="submit" class="btn">
+      Update Job Status Based on Reports
+    </button>
+  </form>
+</div>
+
+<style>
+  .action-buttons {
+    display: flex;
+    gap: 10px;
+  }
+
+  .installation-status {
+    background: #f9f9f9;
+    padding: 20px;
+    border-radius: 5px;
+    text-align: center;
+    margin-bottom: 15px;
+  }
+
+  .installation-status h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: capitalize;
+    margin-bottom: 5px;
+  }
+
+  .status-badge.complete {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+  }
+
+  .status-badge.incomplete {
+    background: rgba(231, 76, 60, 0.15);
+    color: #e74c3c;
+  }
+
+  .status-badge.in_progress {
+    background: rgba(52, 152, 219, 0.15);
+    color: #3498db;
+  }
+
+  .status-badge.pending {
+    background: rgba(241, 196, 15, 0.15);
+    color: #f39c12;
+  }
+
+  .status-badge.completed {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+  }
+
+  .status-badge.cancelled {
+    background: rgba(189, 195, 199, 0.15);
+    color: #7f8c8d;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
+
+  .table th {
+    background-color: #f5f5f5;
+    font-weight: 600;
+  }
+</style>
+
+{% endblock %}

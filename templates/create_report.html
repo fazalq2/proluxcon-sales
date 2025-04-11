@@ -1,0 +1,58 @@
+{% extends "base.html" %} {% block content %}
+
+<h1 class="page-title">Create New Report for {{ job.job_number }}</h1>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Job Information</h2>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <p><strong>Job Number:</strong> {{ job.job_number }}</p>
+        <p><strong>Job Name:</strong> {{ job.name }}</p>
+        <p>
+          <strong>Status:</strong>
+          <span class="status-badge {{ job.status }}"
+            >{{ job.status|title }}</span
+          >
+        </p>
+      </div>
+      <div class="col-md-6">
+        {% if client %}
+        <p><strong>Client:</strong> {{ client.name }}</p>
+        <p>
+          <strong>Client Phone:</strong> {{ client.phone if client.phone else
+          'N/A' }}
+        </p>
+        <p>
+          <strong>Client Email:</strong> {{ client.email if client.email else
+          'N/A' }}
+        </p>
+        {% else %}
+        <p><strong>Client:</strong> No client information available</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 2rem">
+  <div class="card-header">
+    <h2 class="card-title">Create Report</h2>
+  </div>
+  <div class="card-body">
+    <form method="POST">
+      <p>
+        Click the button below to create a new report for this job. You'll be
+        redirected to the measurement and labor entry page.
+      </p>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-lg">Create Report</button>
+        <a href="/view-job/{{ job.id }}" class="btn btn-lg">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "base.html" %} {% block content %}
+
+<h1 class="page-title">Reports for {{ job.job_number }}</h1>
+
+<div class="action-buttons" style="margin-bottom: 20px">
+  <a href="/view-job/{{ job.id }}" class="btn">
+    <i class="fas fa-arrow-left"></i> Back to Job
+  </a>
+  <a href="/create-report/{{ job.id }}" class="btn btn-primary">
+    <i class="fas fa-plus"></i> Create New Report
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">{{ job.name }} - Reports</h2>
+  </div>
+
+  <div class="card-body">
+    {% if reports %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Report ID</th>
+            <th>Date Created</th>
+            <th>Measurements</th>
+            <th>Total Value</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for report in reports %}
+          <tr>
+            <td>{{ report.id }}</td>
+            <td>{{ report.created_at.strftime('%m/%d/%Y %I:%M %p') }}</td>
+            <td>{{ measurements_counts.get(report.id, 0) }}</td>
+            <td>
+              {% if report.id in estimates %} ${{
+              '{:,.2f}'.format(estimates[report.id].total_contract) }} {% else
+              %} $0.00 {% endif %}
+            </td>
+            <td>
+              <div class="btn-group">
+                <a
+                  href="/view_report/{{ report.id }}"
+                  class="btn btn-sm btn-primary"
+                  title="View Report"
+                >
+                  <i class="fas fa-eye"></i>
+                </a>
+                {% if session.role == 'admin' %}
+                <a
+                  href="/edit_report/{{ report.id }}"
+                  class="btn btn-sm btn-info"
+                  title="Edit Report"
+                >
+                  <i class="fas fa-edit"></i>
+                </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-center">No reports found for this job.</p>
+    <div class="text-center">
+      <a href="/create-report/{{ job.id }}" class="btn">
+        <i class="fas fa-plus"></i> Create First Report
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="margin-top: 2rem">
+  <div class="card-header">
+    <h2 class="card-title">Job Details</h2>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col">
+        <p><strong>Job Number:</strong> {{ job.job_number }}</p>
+        <p><strong>Job Name:</strong> {{ job.name }}</p>
+        <p>
+          <strong>Client:</strong> {{ job.client.name if job.client else 'N/A'
+          }}
+        </p>
+      </div>
+      <div class="col">
+        <p>
+          <strong>Status:</strong>
+          <span class="status-badge {{ job.status }}"
+            >{{ job.status|title }}</span
+          >
+        </p>
+        <p>
+          <strong>Site Confirmation:</strong>
+          <span class="status-badge {{ job.site_confirmation_status }}"
+            >{{ job.site_confirmation_status|title }}</span
+          >
+        </p>
+        <p>
+          <strong>Pre-Installation:</strong>
+          <span class="status-badge {{ job.pre_installation_status }}"
+            >{{ job.pre_installation_status|title }}</span
+          >
+        </p>
+        <p>
+          <strong>Post-Installation:</strong>
+          <span class="status-badge {{ job.post_installation_status }}"
+            >{{ job.post_installation_status|title }}</span
+          >
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

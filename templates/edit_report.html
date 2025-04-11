@@ -1,0 +1,480 @@
+{% extends "base.html" %} {% block content %}
+
+<h1 class="page-title">
+  Edit Report #{{ report.id }}
+  <small>Created on {{ report.created_at.strftime('%m/%d/%Y %I:%M %p') }}</small>
+</h1>
+
+<div class="action-buttons" style="margin-bottom: 20px">
+  <a href="/view_report/{{ report.id }}" class="btn">
+    <i class="fas fa-arrow-left"></i> Back to Report
+  </a>
+  <a href="/reports" class="btn">
+    <i class="fas fa-list"></i> All Reports
+  </a>
+</div>
+
+<form method="POST" action="/edit_report/{{ report.id }}">
+  <!-- ESTIMATE SECTION -->
+  <div class="card" style="margin-bottom: 2rem">
+    <div class="card-header">
+      <h2 class="card-title">Edit Estimate</h2>
+    </div>
+
+    {% if estimate %}
+    <div class="card-body">
+      <!-- Three-column layout: Windows, Doors, Permit/Marketing/Material -->
+      <div class="estimate-row">
+        <!-- WINDOWS COLUMN -->
+        <div class="estimate-col">
+          <h3>Windows</h3>
+          <div class="form-group">
+            <label for="extra_large_qty">Extra Large 111+ ($450 each)</label>
+            <input type="number" class="form-control" id="extra_large_qty" name="extra_large_qty" 
+                  value="{{ estimate.extra_large_qty }}" min="0">
+          </div>
+          <div class="form-group">
+            <label for="large_qty">Large 75-110 ($360 each)</label>
+            <input type="number" class="form-control" id="large_qty" name="large_qty" 
+                  value="{{ estimate.large_qty }}" min="0">
+          </div>
+          <div class="form-group">
+            <label for="small_qty">Small 1-74 ($300 each)</label>
+            <input type="number" class="form-control" id="small_qty" name="small_qty" 
+                  value="{{ estimate.small_qty }}" min="0">
+          </div>
+          <div class="form-group">
+            <label for="mull_qty">Mull Door / Win ($40 each)</label>
+            <input type="number" class="form-control" id="mull_qty" name="mull_qty" 
+                  value="{{ estimate.mull_qty }}" min="0">
+          </div>
+        </div>
+        <!-- END WINDOWS COLUMN -->
+
+        <!-- DOORS COLUMN -->
+        <div class="estimate-col">
+          <h3>Doors</h3>
+          <div class="form-group">
+            <label for="sfd_qty">SFD ($825 each)</label>
+            <input type="number" class="form-control" id="sfd_qty" name="sfd_qty" 
+                  value="{{ estimate.sfd_qty }}" min="0">
+          </div>
+          <div class="form-group">
+            <label for="dfd_qty">DFD ($900 each)</label>
+            <input type="number" class="form-control" id="dfd_qty" name="dfd_qty" 
+                  value="{{ estimate.dfd_qty }}" min="0">
+          </div>
+          <div class="form-group">
+            <label for="sgd_qty">SGD ($600 each)</label>
+            <input type="number" class="form-control" id="sgd_qty" name="sgd_qty" 
+                  value="{{ estimate.sgd_qty }}" min="0">
+          </div>
+          <div class="form-group">
+            <label for="extra_panels_qty">Extra Panels ($225 each)</label>
+            <input type="number" class="form-control" id="extra_panels_qty" name="extra_panels_qty" 
+                  value="{{ estimate.extra_panels_qty }}" min="0">
+          </div>
+          <div class="form-group">
+            <label for="door_design_qty">Door Design/panel ($1050 each)</label>
+            <input type="number" class="form-control" id="door_design_qty" name="door_design_qty" 
+                  value="{{ estimate.door_design_qty }}" min="0">
+          </div>
+          <div class="form-group">
+            <label for="shutter_removal_qty">Shutter Removal ($40 each)</label>
+            <input type="number" class="form-control" id="shutter_removal_qty" name="shutter_removal_qty" 
+                  value="{{ estimate.shutter_removal_qty }}" min="0">
+          </div>
+        </div>
+        <!-- END DOORS COLUMN -->
+
+        <!-- PERMIT / MARKETING / MATERIAL COLUMN -->
+        <div class="estimate-col">
+          <h3>Additional Costs</h3>
+          <div class="form-group">
+            <label for="labor_total">Labor Total</label>
+            <input type="number" class="form-control" id="labor_total" name="labor_total" 
+                  value="{{ estimate.labor_total }}" step="0.01">
+            <small class="form-text text-muted">This will be calculated automatically based on your selections</small>
+          </div>
+          <div class="form-group">
+            <label for="marketing_fee">Marketing Fee</label>
+            <input type="number" class="form-control" id="marketing_fee" name="marketing_fee" 
+                  value="{{ estimate.marketing_fee }}" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label for="material_cost">Material Cost</label>
+            <input type="number" class="form-control" id="material_cost" name="material_cost" 
+                  value="{{ estimate.material_cost }}" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label for="markup">Markup</label>
+            <input type="number" class="form-control" id="markup" name="markup" 
+                  value="{{ estimate.markup }}" step="0.01" min="0">
+          </div>
+        </div>
+        <!-- END PERMIT / MARKETING / MATERIAL COLUMN -->
+      </div>
+    </div>
+    {% else %}
+    <div class="card-body">
+      <p class="text-center">No estimate data found for this report.</p>
+    </div>
+    {% endif %}
+  </div>
+  <!-- END ESTIMATE SECTION -->
+
+  <!-- MEASUREMENT / LABOR TABLE SECTION -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Edit Measurements</h2>
+      <button type="button" class="btn" id="add-measurement-btn">
+        <i class="fas fa-plus"></i> Add Measurement
+      </button>
+    </div>
+
+    <div class="card-body">
+      {% if measurements %}
+      <div class="table-responsive">
+        <table id="measurements-table" class="table table-bordered">
+          <thead>
+            <tr>
+              <th>Nbr.</th>
+              <th>Style</th>
+              <th>CONFIG</th>
+              <th>W</th>
+              <th>H</th>
+              <th>Door Design</th>
+              <th>PRIV</th>
+              <th>EG</th>
+              <th>Grids</th>
+              <th>Grid Config.</th>
+              <th>S/R</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody id="measurements-tbody">
+            {% for measurement in measurements %}
+            <tr data-id="{{ measurement.id }}">
+              <td>
+                <input type="hidden" name="measurement_{{ measurement.id }}_nbr" value="{{ measurement.nbr }}">
+                {{ measurement.nbr }}
+              </td>
+              <td>
+                <select class="form-control" name="measurement_{{ measurement.id }}_style">
+                  <option value="sfd" {% if measurement.style == 'sfd' %}selected{% endif %}>SFD</option>
+                  <option value="dfd" {% if measurement.style == 'dfd' %}selected{% endif %}>DFD</option>
+                  <option value="sgd" {% if measurement.style == 'sgd' %}selected{% endif %}>SGD</option>
+                  <option value="hr" {% if measurement.style == 'hr' %}selected{% endif %}>HR</option>
+                  <option value="sh" {% if measurement.style == 'sh' %}selected{% endif %}>SH</option>
+                  <option value="csmt" {% if measurement.style == 'csmt' %}selected{% endif %}>CSMT</option>
+                  <option value="gls" {% if measurement.style == 'gls' %}selected{% endif %}>GLS</option>
+                  <option value="other" {% if measurement.style not in ['sfd', 'dfd', 'sgd', 'hr', 'sh', 'csmt', 'gls'] %}selected{% endif %}>OTHER</option>
+                </select>
+              </td>
+              <td>
+                <input type="text" class="form-control" name="measurement_{{ measurement.id }}_config" value="{{ measurement.config }}">
+              </td>
+              <td>
+                <input type="number" class="form-control" name="measurement_{{ measurement.id }}_width" value="{{ measurement.width }}" step="0.01">
+              </td>
+              <td>
+                <input type="number" class="form-control" name="measurement_{{ measurement.id }}_height" value="{{ measurement.height }}" step="0.01">
+              </td>
+              <td>
+                <select class="form-control" name="measurement_{{ measurement.id }}_door_design">
+                  <option value="No" {% if not measurement.door_design %}selected{% endif %}>No</option>
+                  <option value="Yes" {% if measurement.door_design %}selected{% endif %}>Yes</option>
+                </select>
+              </td>
+              <td>
+                <select class="form-control" name="measurement_{{ measurement.id }}_priv">
+                  <option value="No" {% if not measurement.priv %}selected{% endif %}>No</option>
+                  <option value="Yes" {% if measurement.priv %}selected{% endif %}>Yes</option>
+                </select>
+              </td>
+              <td>
+                <select class="form-control" name="measurement_{{ measurement.id }}_eg">
+                  <option value="No" {% if not measurement.eg %}selected{% endif %}>No</option>
+                  <option value="Yes" {% if measurement.eg %}selected{% endif %}>Yes</option>
+                </select>
+              </td>
+              <td>
+                <select class="form-control" name="measurement_{{ measurement.id }}_grids">
+                  <option value="No" {% if not measurement.grids %}selected{% endif %}>No</option>
+                  <option value="Yes" {% if measurement.grids %}selected{% endif %}>Yes</option>
+                </select>
+              </td>
+              <td>
+                <input type="text" class="form-control" name="measurement_{{ measurement.id }}_grid_config" value="{{ measurement.grid_config }}">
+              </td>
+              <td>
+                <select class="form-control" name="measurement_{{ measurement.id }}_sr">
+                  <option value="No" {% if not measurement.sr %}selected{% endif %}>No</option>
+                  <option value="Yes" {% if measurement.sr %}selected{% endif %}>Yes</option>
+                </select>
+              </td>
+              <td>
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" name="delete_measurements" value="{{ measurement.id }}">
+                  <label class="form-check-label">Delete</label>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-center">No measurements found for this report. Click "Add Measurement" to create one.</p>
+      <div class="table-responsive">
+        <table id="measurements-table" class="table table-bordered" style="display: none;">
+          <thead>
+            <tr>
+              <th>Nbr.</th>
+              <th>Style</th>
+              <th>CONFIG</th>
+              <th>W</th>
+              <th>H</th>
+              <th>Door Design</th>
+              <th>PRIV</th>
+              <th>EG</th>
+              <th>Grids</th>
+              <th>Grid Config.</th>
+              <th>S/R</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody id="measurements-tbody">
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      <!-- Hidden field to track new measurement count -->
+      <input type="hidden" id="new_measurement_count" name="new_measurement_count" value="0">
+    </div>
+  </div>
+  <!-- END MEASUREMENT / LABOR TABLE SECTION -->
+
+  <div class="form-actions" style="margin-top: 2rem; text-align: center;">
+    <button type="submit" class="btn btn-lg">
+      <i class="fas fa-save"></i> Save Changes
+    </button>
+    <a href="/view_report/{{ report.id }}" class="btn btn-lg">
+      <i class="fas fa-times"></i> Cancel
+    </a>
+  </div>
+</form>
+
+<style>
+  /* Form styling */
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  .form-control {
+    display: block;
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #495057;
+    background-color: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+  }
+  
+  /* Estimate section styling */
+  .estimate-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -15px;
+  }
+  
+  .estimate-col {
+    flex: 1;
+    min-width: 300px;
+    padding: 0 15px;
+    margin-bottom: 20px;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 991px) {
+    .estimate-col {
+      flex: 0 0 100%;
+    }
+  }
+  
+  /* Table styling */
+  #measurements-table input, 
+  #measurements-table select {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .btn {
+    margin-right: 5px;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize variables
+    let newMeasurementCount = 0;
+    const measurementsTable = document.getElementById('measurements-table');
+    const measurementsTbody = document.getElementById('measurements-tbody');
+    const newMeasurementCountInput = document.getElementById('new_measurement_count');
+    const addMeasurementBtn = document.getElementById('add-measurement-btn');
+    
+    // Calculate estimated costs based on form inputs
+    function calculateEstimates() {
+      // Windows
+      const extraLargeQty = parseInt(document.getElementById('extra_large_qty').value) || 0;
+      const largeQty = parseInt(document.getElementById('large_qty').value) || 0;
+      const smallQty = parseInt(document.getElementById('small_qty').value) || 0;
+      const mullQty = parseInt(document.getElementById('mull_qty').value) || 0;
+      
+      // Doors
+      const sfdQty = parseInt(document.getElementById('sfd_qty').value) || 0;
+      const dfdQty = parseInt(document.getElementById('dfd_qty').value) || 0;
+      const sgdQty = parseInt(document.getElementById('sgd_qty').value) || 0;
+      const extraPanelsQty = parseInt(document.getElementById('extra_panels_qty').value) || 0;
+      const doorDesignQty = parseInt(document.getElementById('door_design_qty').value) || 0;
+      const shutterRemovalQty = parseInt(document.getElementById('shutter_removal_qty').value) || 0;
+      
+      // Calculate labor total
+      let laborTotal = 0;
+      
+      // Windows labor
+      laborTotal += extraLargeQty * 450;
+      laborTotal += largeQty * 360;
+      laborTotal += smallQty * 300;
+      laborTotal += mullQty * 40;
+      
+      // Doors labor
+      laborTotal += sfdQty * 825;
+      laborTotal += dfdQty * 900;
+      laborTotal += sgdQty * 600;
+      laborTotal += extraPanelsQty * 225;
+      laborTotal += doorDesignQty * 1050;
+      laborTotal += shutterRemovalQty * 40;
+      
+      // Permit cost
+      laborTotal += 450; // Fixed permit cost
+      
+      // Update labor total
+      document.getElementById('labor_total').value = laborTotal.toFixed(2);
+    }
+    
+    // Add a new row to the measurements table
+    function addMeasurementRow() {
+      newMeasurementCount++;
+      newMeasurementCountInput.value = newMeasurementCount;
+      
+      const newRow = document.createElement('tr');
+      const rowNumber = document.querySelectorAll('#measurements-tbody tr').length + 1;
+      
+      newRow.innerHTML = `
+        <td>${rowNumber}</td>
+        <td>
+          <select class="form-control" name="new_measurement_${newMeasurementCount}_style">
+            <option value="">Select...</option>
+            <option value="sfd">SFD</option>
+            <option value="dfd">DFD</option>
+            <option value="sgd">SGD</option>
+            <option value="hr">HR</option>
+            <option value="sh">SH</option>
+            <option value="csmt">CSMT</option>
+            <option value="gls">GLS</option>
+            <option value="other">OTHER</option>
+          </select>
+        </td>
+        <td>
+          <input type="text" class="form-control" name="new_measurement_${newMeasurementCount}_config">
+        </td>
+        <td>
+          <input type="number" class="form-control" name="new_measurement_${newMeasurementCount}_width" step="0.01">
+        </td>
+        <td>
+          <input type="number" class="form-control" name="new_measurement_${newMeasurementCount}_height" step="0.01">
+        </td>
+        <td>
+          <select class="form-control" name="new_measurement_${newMeasurementCount}_door_design">
+            <option value="No" selected>No</option>
+            <option value="Yes">Yes</option>
+          </select>
+        </td>
+        <td>
+          <select class="form-control" name="new_measurement_${newMeasurementCount}_priv">
+            <option value="No" selected>No</option>
+            <option value="Yes">Yes</option>
+          </select>
+        </td>
+        <td>
+          <select class="form-control" name="new_measurement_${newMeasurementCount}_eg">
+            <option value="No" selected>No</option>
+            <option value="Yes">Yes</option>
+          </select>
+        </td>
+        <td>
+          <select class="form-control" name="new_measurement_${newMeasurementCount}_grids">
+            <option value="No" selected>No</option>
+            <option value="Yes">Yes</option>
+          </select>
+        </td>
+        <td>
+          <input type="text" class="form-control" name="new_measurement_${newMeasurementCount}_grid_config">
+        </td>
+        <td>
+          <select class="form-control" name="new_measurement_${newMeasurementCount}_sr">
+            <option value="No" selected>No</option>
+            <option value="Yes">Yes</option>
+          </select>
+        </td>
+        <td>
+          <button type="button" class="btn btn-sm btn-danger remove-row-btn">
+            <i class="fas fa-trash"></i>
+          </button>
+        </td>
+      `;
+      
+      measurementsTbody.appendChild(newRow);
+      
+      // Add event listener to the remove button
+      const removeBtn = newRow.querySelector('.remove-row-btn');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', function() {
+          newRow.remove();
+          updateRowNumbers();
+        });
+      }
+      
+      // Show the table if it was hidden
+      measurementsTable.style.display = 'table';
+    }
+    
+    // Update row numbers after deletion
+    function updateRowNumbers() {
+      const rows = document.querySelectorAll('#measurements-tbody tr');
+      rows.forEach((row, index) => {
+        row.cells[0].textContent = index + 1;
+      });
+    }
+    
+    // Add event listeners
+    if (addMeasurementBtn) {
+      addMeasurementBtn.addEventListener('click', addMeasurementRow);
+    }
+    
+    // Add event listeners for recalculating labor costs
+    const qtyInputs = document.querySelectorAll('input[id$="_qty"]');
+    qtyInputs.forEach(input => {
+      input.addEventListener('input', calculateEstimates);
+    });
+    
+    // Calculate initial estimates
+    calculateEstimates();
+  });
+</script>
+
+{% endblock %}

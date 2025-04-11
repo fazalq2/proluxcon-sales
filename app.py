@@ -11,6 +11,16 @@ import traceback
 from datetime import timedelta
 from dotenv import load_dotenv
 
+# Flask imports
+from flask import make_response, send_file
+
+# PDF generation
+import pdfkit
+
+# Excel generation
+import xlsxwriter
+
+
 load_dotenv()
 
 # Set up logging - add this near the top of your file after imports
@@ -55,6 +65,15 @@ app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
 @app.before_request
 def make_session_permanent():
     session.permanent = True
+
+
+# Template context processor for PDF timestamps
+@app.context_processor
+def utility_processor():
+    def now():
+        return datetime.utcnow()
+
+    return dict(now=now)
 
 
 # Determine the environment (development vs production)
@@ -643,6 +662,47 @@ def get_dashboard_data_admin():
     }
 
 
+def get_job_stats(job_id):
+    """Get comprehensive stats for a job"""
+    stats = {}
+
+    # Get job
+    job = Job.query.get(job_id)
+    if not job:
+        return None
+
+    # Basic job info
+    stats["job"] = job
+
+    # Count reports
+    stats["report_count"] = Report.query.filter_by(job_id=job_id).count()
+
+    # Get total contract value
+    total_value = 0
+    for estimate in Estimate.query.join(Report).filter(Report.job_id == job_id).all():
+        total_value += estimate.total_contract
+
+    stats["total_value"] = total_value
+
+    # Status counts
+    status_counts = {
+        "site_confirmation": {"incomplete": 0, "in_progress": 0, "complete": 0},
+        "pre_installation": {"incomplete": 0, "in_progress": 0, "complete": 0},
+        "post_installation": {"incomplete": 0, "in_progress": 0, "complete": 0},
+    }
+
+    for status in JobStatus.query.filter_by(job_id=job_id).all():
+        if (
+            status.stage in status_counts
+            and status.status in status_counts[status.stage]
+        ):
+            status_counts[status.stage][status.status] += 1
+
+    stats["status_counts"] = status_counts
+
+    return stats
+
+
 # -----------------------------------------------------------
 # Authentication Routes
 # -----------------------------------------------------------
@@ -883,6 +943,31 @@ def update_job_status():
     )
 
 
+@app.route("/update_job_from_reports/<int:job_id>", methods=["POST"])
+def update_job_from_reports(job_id):
+    """Update job status based on reports"""
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    # Verify job exists and user has permission
+    job = Job.query.get_or_404(job_id)
+    if job.user_id != session["user_id"] and session.get("role") != "admin":
+        flash("Job not found or access denied.", "error")
+        return redirect(url_for("dashboard"))
+
+    # Count reports
+    report_count = Report.query.filter_by(job_id=job_id).count()
+
+    # Logic: If there's at least one report, move the job to "in_progress"
+    if report_count > 0 and job.status == "pending":
+        job.status = "in_progress"
+        db.session.commit()
+        flash("Job status updated to In Progress based on attached reports.", "success")
+
+    return redirect(url_for("view_job", job_id=job_id))
+
+
 @app.route("/api/delete-job/<int:job_id>", methods=["DELETE"])
 def delete_job_api(job_id):
     if "user_id" not in session:
@@ -1042,13 +1127,21 @@ def view_job(job_id):
         flash("Please log in to view the job.", "error")
         return redirect(url_for("login"))
 
-    # Fetch the job owned by the logged-in user
-    job = Job.query.filter_by(id=job_id, user_id=session["user_id"]).first()
+    # Check user role
+    role = session.get("role")
+    user_id = session["user_id"]
+
+    # Let admins see any job; let others see only their own.
+    if role == "admin":
+        job = Job.query.get(job_id)
+    else:
+        job = Job.query.filter_by(id=job_id, user_id=user_id).first()
+
     if not job:
         flash("Job not found or access denied.", "error")
         return redirect(url_for("dashboard"))
 
-    # Optionally, fetch any reports or related data for this job
+    # Optionally, fetch any reports
     reports = Report.query.filter_by(job_id=job_id).all()
 
     # Render the view job details template
@@ -1075,35 +1168,64 @@ def create_report(job_id):
             # You can process additional form fields for report details here
             db.session.add(report)
             db.session.commit()
-            flash("Report created successfully.", "success")
-            return redirect(url_for("view_job", job_id=job_id))
+
+            # Redirect to measure_labor for the actual report content
+            flash(
+                "Report created successfully. Now add measurements and create an estimate.",
+                "success",
+            )
+            return redirect(url_for("measure_labor", report_id=report.id))
         except Exception as e:
             db.session.rollback()
             flash("Error creating report: " + str(e), "error")
+
+    # Get the client info for the job
+    client = Client.query.get(job.client_id) if job.client_id else None
+
     # Render the report creation form template
-    return render_template("create_report.html", job=job)
+    return render_template("create_report.html", job=job, client=client)
 
 
-@app.route("/job-timeline/<int:job_id>")
+@app.route("/job_timeline/<int:job_id>")
 def job_timeline(job_id):
-    # Ensure the user is logged in
+    """View a job's timeline including status changes and reports"""
     if "user_id" not in session:
         flash("Please log in to view the job timeline.", "error")
         return redirect(url_for("login"))
 
-    # Verify that the job exists and belongs to the user
-    job = Job.query.filter_by(id=job_id, user_id=session["user_id"]).first()
-    if not job:
+    # Verify job exists
+    job = Job.query.get_or_404(job_id)
+    if job.user_id != session["user_id"] and session.get("role") != "admin":
         flash("Job not found or access denied.", "error")
         return redirect(url_for("dashboard"))
 
-    # Retrieve the job's timeline data (e.g., all related JobStatus entries)
-    timeline = (
+    # Get job status entries
+    statuses = (
         JobStatus.query.filter_by(job_id=job_id).order_by(JobStatus.created_at).all()
     )
 
-    # Render the job timeline template
-    return render_template("job_timeline.html", job=job, timeline=timeline)
+    # Get reports
+    reports = Report.query.filter_by(job_id=job_id).order_by(Report.created_at).all()
+
+    # Merge statuses and reports into a timeline
+    timeline_items = []
+
+    # Add statuses
+    for status in statuses:
+        timeline_items.append(
+            {"type": "status", "date": status.created_at, "data": status}
+        )
+
+    # Add reports
+    for report in reports:
+        timeline_items.append(
+            {"type": "report", "date": report.created_at, "data": report}
+        )
+
+    # Sort by date
+    timeline_items.sort(key=lambda x: x["date"])
+
+    return render_template("job_timeline.html", job=job, timeline_items=timeline_items)
 
 
 @app.route("/profile")
@@ -1129,9 +1251,24 @@ def post_installation():
     return render_template("post_installation.html")
 
 
-@app.route("/measure_labor")
+@app.route("/measure_labor", methods=["GET"])
 def measure_labor():
-    return render_template("measure_labor.html")
+    job = None
+    client = None
+
+    job_id = request.args.get("job_id")
+    report_id = request.args.get("report_id")
+
+    if report_id:
+        report = Report.query.get_or_404(report_id)
+        job = report.job
+    elif job_id:
+        job = Job.query.get_or_404(job_id)
+
+    if job:
+        client = Client.query.get(job.client_id) if job.client_id else None
+
+    return render_template("measure_labor.html", job=job, client=client)
 
 
 # Add this route to your Flask application
@@ -1167,13 +1304,6 @@ def check_login():
 # @role_required(["admin", "sales"])  # Both roles can see this
 def settings():
     return render_template("settings.html")
-
-
-# 2) Reports (Only Admin)
-@app.route("/reports")
-# @role_required(["admin"])
-def reports():
-    return render_template("reports.html")
 
 
 # 3) Clients (Admin & Sales)
@@ -1238,13 +1368,33 @@ def save_report():
             logger.error(f"User ID {user_id} not found in database")
             return jsonify({"error": "User not found. Please log in again."}), 401
 
+        # Check for job_id in the request
+        job_id = data.get("job_id")
+        logger.info(f"Received job_id: {job_id}")
+
+        # Validate job_id if present
+        if job_id:
+            job = Job.query.get(job_id)
+            if not job:
+                logger.error(f"Job ID {job_id} not found")
+                return jsonify({"error": f"Job ID {job_id} not found"}), 404
+
+            # Check if user has permission for this job
+            if job.user_id != user_id and session.get("role") != "admin":
+                logger.error(f"User {user_id} doesn't have permission for job {job_id}")
+                return jsonify({"error": "You don't have permission for this job"}), 403
+
+            logger.info(f"Validated job: {job.job_number} for user {user_id}")
+
         # Create a new report within a transaction
         try:
             # Start transaction by creating the report
-            report = Report(user_id=user_id)
+            report = Report(user_id=user_id, job_id=job_id)
             db.session.add(report)
             db.session.flush()  # Get the ID without committing yet
-            logger.info(f"Created report with ID: {report.id}")
+            logger.info(
+                f"Created report with ID: {report.id}, linked to job_id: {job_id}"
+            )
 
             # Validate and process measurements
             if "measurements" not in data or not data["measurements"]:
@@ -1369,17 +1519,30 @@ def save_report():
                 db.session.rollback()
                 return jsonify({"error": f"Error creating estimate: {str(e)}"}), 500
 
+            # If job_id is present, update job status if needed
+            if job_id:
+                job = Job.query.get(job_id)
+                if job.status == "pending":
+                    job.status = "in_progress"
+                    logger.info(f"Updated job {job_id} status to in_progress")
+
             # If we've made it here, commit the transaction
             db.session.commit()
             logger.info(f"Report {report.id} saved successfully")
 
-            return jsonify(
-                {
-                    "success": True,
-                    "message": "Report saved successfully!",
-                    "report_id": report.id,
-                }
-            )
+            # Return success response
+            response_data = {
+                "success": True,
+                "message": "Report saved successfully!",
+                "report_id": report.id,
+            }
+
+            # Add job info to response if available
+            if job_id:
+                response_data["job_id"] = job_id
+                response_data["job_number"] = job.job_number
+
+            return jsonify(response_data)
 
         except Exception as e:
             logger.error(f"Error processing report data: {str(e)}")
@@ -1437,6 +1600,34 @@ def test_save():
         logger.error(f"Database error: {str(e)}")
         db.session.rollback()
         return jsonify({"error": f"Database error: {str(e)}"}), 500
+
+
+@app.route("/api/user_jobs", methods=["GET"])
+def user_jobs_api():
+    """API endpoint to get a user's jobs for dropdowns"""
+    if "user_id" not in session:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    user_id = session["user_id"]
+    role = session.get("role")
+
+    # For admin, show all jobs. For others, show only their jobs
+    if role == "admin":
+        jobs = Job.query.order_by(Job.job_number).all()
+    else:
+        jobs = Job.query.filter_by(user_id=user_id).order_by(Job.job_number).all()
+
+    jobs_data = []
+    for job in jobs:
+        jobs_data.append(
+            {
+                "id": job.id,
+                "job_number": job.job_number,
+                "name": job.name,
+            }
+        )
+
+    return jsonify({"jobs": jobs_data})
 
 
 # -----------------------------------------------------------
@@ -1540,6 +1731,842 @@ def receive_ghl_opportunity():
         logger.error(traceback.format_exc())
         db.session.rollback()
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+
+
+# -----------------------------------------------------------
+# Rports
+# -----------------------------------------------------------
+
+
+@app.route("/reports")
+def reports():
+    """View all reports"""
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    user_id = session["user_id"]
+    role = session.get("role")
+
+    # For admin, show all reports. For others, show only their reports
+    if role == "admin":
+        all_reports = Report.query.order_by(Report.created_at.desc()).all()
+    else:
+        all_reports = (
+            Report.query.filter_by(user_id=user_id)
+            .order_by(Report.created_at.desc())
+            .all()
+        )
+
+    # Collect related data
+    report_ids = [report.id for report in all_reports]
+
+    # Get measurements counts
+    measurements_counts = {}
+    for report_id in report_ids:
+        count = Measurement.query.filter_by(report_id=report_id).count()
+        measurements_counts[report_id] = count
+
+    # Get estimate data
+    estimates = {}
+    for estimate in Estimate.query.filter(Estimate.report_id.in_(report_ids)).all():
+        estimates[estimate.report_id] = estimate
+
+    # Get job information if available
+    job_info = {}
+    job_ids = [report.job_id for report in all_reports if report.job_id]
+    jobs = {job.id: job for job in Job.query.filter(Job.id.in_(job_ids)).all()}
+
+    for report in all_reports:
+        if report.job_id and report.job_id in jobs:
+            job = jobs[report.job_id]
+            job_info[report.id] = {"job_number": job.job_number, "job_name": job.name}
+
+    # Get user information for admins
+    users = {}
+    if role == "admin":
+        user_ids = [report.user_id for report in all_reports]
+        for user in User.query.filter(User.id.in_(user_ids)).all():
+            users[user.id] = user.name
+
+    # This return statement was missing
+    return render_template(
+        "reports.html",
+        reports=all_reports,
+        measurements_counts=measurements_counts,
+        estimates=estimates,
+        job_info=job_info,
+        users=users,
+        is_admin=(role == "admin"),
+    )
+
+
+@app.route("/view_report/<int:report_id>")
+def view_report(report_id):
+    """View a specific report's details"""
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    user_id = session["user_id"]
+    role = session.get("role")
+
+    # Get the report
+    report = Report.query.get_or_404(report_id)
+
+    # Check permission: admins can view all reports, others only their own
+    if role != "admin" and report.user_id != user_id:
+        flash("You do not have permission to view this report.", "error")
+        return redirect(url_for("reports"))
+
+    # Get all measurements for this report
+    measurements = (
+        Measurement.query.filter_by(report_id=report_id).order_by(Measurement.nbr).all()
+    )
+
+    # Get the estimate
+    estimate = Estimate.query.filter_by(report_id=report_id).first()
+
+    # Get job information if available
+    job = None
+    if report.job_id:
+        job = Job.query.get(report.job_id)
+
+    # Get report creator information
+    creator = User.query.get(report.user_id)
+
+    return render_template(
+        "view_report.html",
+        report=report,
+        measurements=measurements,
+        estimate=estimate,
+        job=job,
+        creator=creator,
+    )
+
+
+@app.route("/delete_report/<int:report_id>", methods=["POST"])
+def delete_report(report_id):
+    """Delete a report"""
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    user_id = session["user_id"]
+    role = session.get("role")
+
+    # Get the report
+    report = Report.query.get_or_404(report_id)
+
+    # Check permission: admins can delete any report, others only their own
+    if role != "admin" and report.user_id != user_id:
+        flash("You do not have permission to delete this report.", "error")
+        return redirect(url_for("reports"))
+
+    try:
+        # Delete associated measurements
+        Measurement.query.filter_by(report_id=report_id).delete()
+
+        # Delete associated estimate
+        Estimate.query.filter_by(report_id=report_id).delete()
+
+        # Delete the report
+        db.session.delete(report)
+        db.session.commit()
+
+        flash("Report deleted successfully.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error deleting report: {str(e)}", "error")
+
+    return redirect(url_for("reports"))
+
+
+@app.route("/api/reports/data")
+def reports_data_api():
+    """API endpoint to get reports data for AJAX calls"""
+    if "user_id" not in session:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    user_id = session["user_id"]
+    role = session.get("role")
+
+    # For admin, show all reports. For others, show only their reports
+    if role == "admin":
+        all_reports = Report.query.order_by(Report.created_at.desc()).all()
+    else:
+        all_reports = (
+            Report.query.filter_by(user_id=user_id)
+            .order_by(Report.created_at.desc())
+            .all()
+        )
+
+    # Format data for response
+    reports_data = []
+
+    for report in all_reports:
+        # Get estimate if available
+        estimate = Estimate.query.filter_by(report_id=report.id).first()
+        total_contract = estimate.total_contract if estimate else 0
+
+        # Get measurements count
+        measurements_count = Measurement.query.filter_by(report_id=report.id).count()
+
+        # Get job info if available
+        job_info = None
+        if report.job_id:
+            job = Job.query.get(report.job_id)
+            if job:
+                job_info = {"job_number": job.job_number, "job_name": job.name}
+
+        # Get creator info if admin
+        creator_name = None
+        if role == "admin":
+            creator = User.query.get(report.user_id)
+            creator_name = creator.name if creator else "Unknown"
+
+        report_data = {
+            "id": report.id,
+            "created_at": report.created_at.strftime("%Y-%m-%d %H:%M"),
+            "measurements_count": measurements_count,
+            "total_contract": total_contract,
+            "job_info": job_info,
+            "creator_name": creator_name,
+        }
+
+        reports_data.append(report_data)
+
+    return jsonify({"reports": reports_data})
+
+
+# Add these routes to your app.py file
+
+
+@app.route("/edit_report/<int:report_id>", methods=["GET", "POST"])
+def edit_report(report_id):
+    """Edit a specific report - admin only"""
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    # Check if the user is an admin
+    if session.get("role") != "admin":
+        flash("Only administrators can edit reports.", "error")
+        return redirect(url_for("reports"))
+
+    # Get the report
+    report = Report.query.get_or_404(report_id)
+
+    if request.method == "POST":
+        try:
+            # Process estimate data
+            estimate = Estimate.query.filter_by(report_id=report_id).first()
+            if estimate:
+                # Helper function to safely convert values
+                def safe_convert(value, default=0):
+                    if value is None:
+                        return default
+                    try:
+                        return float(value)
+                    except (ValueError, TypeError):
+                        return default
+
+                # Update estimate fields
+                estimate.extra_large_qty = int(
+                    safe_convert(request.form.get("extra_large_qty"))
+                )
+                estimate.large_qty = int(safe_convert(request.form.get("large_qty")))
+                estimate.small_qty = int(safe_convert(request.form.get("small_qty")))
+                estimate.mull_qty = int(safe_convert(request.form.get("mull_qty")))
+                estimate.sfd_qty = int(safe_convert(request.form.get("sfd_qty")))
+                estimate.dfd_qty = int(safe_convert(request.form.get("dfd_qty")))
+                estimate.sgd_qty = int(safe_convert(request.form.get("sgd_qty")))
+                estimate.extra_panels_qty = int(
+                    safe_convert(request.form.get("extra_panels_qty"))
+                )
+                estimate.door_design_qty = int(
+                    safe_convert(request.form.get("door_design_qty"))
+                )
+                estimate.shutter_removal_qty = int(
+                    safe_convert(request.form.get("shutter_removal_qty"))
+                )
+                estimate.labor_total = safe_convert(request.form.get("labor_total"))
+                estimate.marketing_fee = safe_convert(request.form.get("marketing_fee"))
+                estimate.material_cost = safe_convert(request.form.get("material_cost"))
+                estimate.markup = safe_convert(request.form.get("markup"), 5000)
+
+                # Calculate derived fields
+                estimate.salesman_cost = (
+                    estimate.labor_total
+                    + estimate.marketing_fee
+                    + estimate.material_cost
+                )
+                estimate.total_contract = estimate.salesman_cost + estimate.markup
+                estimate.commission = estimate.markup * 0.2
+
+            # Process measurements
+            # First, handle deletion of measurements if requested
+            if "delete_measurements" in request.form:
+                measurement_ids = request.form.getlist("delete_measurements")
+                for m_id in measurement_ids:
+                    measurement = Measurement.query.get(int(m_id))
+                    if measurement and measurement.report_id == report_id:
+                        db.session.delete(measurement)
+
+            # Update existing measurements
+            for measurement in report.measurements:
+                prefix = f"measurement_{measurement.id}_"
+                if prefix + "style" in request.form:
+                    measurement.style = request.form.get(prefix + "style")
+                    measurement.config = request.form.get(prefix + "config", "")
+
+                    # Handle numeric values
+                    try:
+                        width = request.form.get(prefix + "width")
+                        height = request.form.get(prefix + "height")
+                        measurement.width = (
+                            float(width) if width and width.strip() else None
+                        )
+                        measurement.height = (
+                            float(height) if height and height.strip() else None
+                        )
+                    except ValueError:
+                        flash(
+                            f"Invalid numeric value for measurement #{measurement.nbr}",
+                            "error",
+                        )
+
+                    # Handle boolean values
+                    measurement.door_design = (
+                        request.form.get(prefix + "door_design") == "Yes"
+                    )
+                    measurement.priv = request.form.get(prefix + "priv") == "Yes"
+                    measurement.eg = request.form.get(prefix + "eg") == "Yes"
+                    measurement.grids = request.form.get(prefix + "grids") == "Yes"
+                    measurement.grid_config = request.form.get(
+                        prefix + "grid_config", ""
+                    )
+                    measurement.sr = request.form.get(prefix + "sr") == "Yes"
+
+            # Add new measurements if requested
+            if "new_measurement_count" in request.form:
+                new_count = int(request.form.get("new_measurement_count", 0))
+                for i in range(1, new_count + 1):
+                    prefix = f"new_measurement_{i}_"
+                    if prefix + "style" in request.form:
+                        style = request.form.get(prefix + "style")
+                        if not style:
+                            continue  # Skip if no style is selected
+
+                        # Get other values
+                        config = request.form.get(prefix + "config", "")
+
+                        # Handle numeric values
+                        try:
+                            width = request.form.get(prefix + "width")
+                            height = request.form.get(prefix + "height")
+                            width_val = (
+                                float(width) if width and width.strip() else None
+                            )
+                            height_val = (
+                                float(height) if height and height.strip() else None
+                            )
+                        except ValueError:
+                            flash(
+                                f"Invalid numeric value for new measurement #{i}",
+                                "error",
+                            )
+                            continue
+
+                        # Handle boolean values
+                        door_design = request.form.get(prefix + "door_design") == "Yes"
+                        priv = request.form.get(prefix + "priv") == "Yes"
+                        eg = request.form.get(prefix + "eg") == "Yes"
+                        grids = request.form.get(prefix + "grids") == "Yes"
+                        grid_config = request.form.get(prefix + "grid_config", "")
+                        sr = request.form.get(prefix + "sr") == "Yes"
+
+                        # Create new measurement
+                        nbr = len(report.measurements) + i
+                        new_measurement = Measurement(
+                            report_id=report_id,
+                            nbr=nbr,
+                            style=style,
+                            config=config,
+                            width=width_val,
+                            height=height_val,
+                            door_design=door_design,
+                            priv=priv,
+                            eg=eg,
+                            grids=grids,
+                            grid_config=grid_config,
+                            sr=sr,
+                        )
+                        db.session.add(new_measurement)
+
+            # Commit all changes
+            db.session.commit()
+            flash("Report updated successfully!", "success")
+            return redirect(url_for("view_report", report_id=report_id))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error updating report: {str(e)}", "error")
+
+    # GET request - show edit form
+    # Get all measurements for this report
+    measurements = (
+        Measurement.query.filter_by(report_id=report_id).order_by(Measurement.nbr).all()
+    )
+
+    # Get the estimate
+    estimate = Estimate.query.filter_by(report_id=report_id).first()
+
+    # Get job information if available
+    job = None
+    if report.job_id:
+        job = Job.query.get(report.job_id)
+
+    # Get report creator information
+    creator = User.query.get(report.user_id)
+
+    # Return the template with all necessary data
+    return render_template(
+        "edit_report.html",
+        report=report,
+        measurements=measurements,
+        estimate=estimate,
+        job=job,
+        creator=creator,
+    )
+
+
+@app.route("/export_report/<int:report_id>/excel")
+def export_report_excel(report_id):
+    """Export a report as Excel"""
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    # Get the report
+    report = Report.query.get_or_404(report_id)
+
+    # Get all measurements for this report
+    measurements = (
+        Measurement.query.filter_by(report_id=report_id).order_by(Measurement.nbr).all()
+    )
+
+    # Get the estimate
+    estimate = Estimate.query.filter_by(report_id=report_id).first()
+
+    # Get report creator information
+    creator = User.query.get(report.user_id)
+
+    try:
+        import xlsxwriter
+        import tempfile
+
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
+            temp_file = f.name
+
+        # Create a workbook and add worksheets
+        workbook = xlsxwriter.Workbook(temp_file)
+
+        # Add formatting
+        header_format = workbook.add_format(
+            {
+                "bold": True,
+                "align": "center",
+                "bg_color": "#3498db",
+                "color": "white",
+                "border": 1,
+            }
+        )
+
+        cell_format = workbook.add_format({"border": 1})
+
+        money_format = workbook.add_format({"border": 1, "num_format": "$#,##0.00"})
+
+        # Report Info worksheet
+        info_sheet = workbook.add_worksheet("Report Info")
+        info_sheet.write(0, 0, "Report Information", header_format)
+        info_sheet.merge_range("A1:B1", "Report Information", header_format)
+
+        # Basic report information
+        info_sheet.write(1, 0, "Report ID:", cell_format)
+        info_sheet.write(1, 1, report.id, cell_format)
+
+        info_sheet.write(2, 0, "Created At:", cell_format)
+        info_sheet.write(
+            2, 1, report.created_at.strftime("%m/%d/%Y %I:%M %p"), cell_format
+        )
+
+        info_sheet.write(3, 0, "Created By:", cell_format)
+        info_sheet.write(3, 1, creator.name, cell_format)
+
+        # Job information if available
+        row = 5
+        if report.job_id:
+            job = Job.query.get(report.job_id)
+            if job:
+                info_sheet.write(row, 0, "Job Number:", cell_format)
+                info_sheet.write(row, 1, job.job_number, cell_format)
+                row += 1
+
+                info_sheet.write(row, 0, "Job Name:", cell_format)
+                info_sheet.write(row, 1, job.name, cell_format)
+                row += 1
+
+                if hasattr(job, "client") and job.client:
+                    info_sheet.write(row, 0, "Client:", cell_format)
+                    info_sheet.write(row, 1, job.client.name, cell_format)
+        else:
+            info_sheet.write(row, 0, "Job:", cell_format)
+            info_sheet.write(row, 1, "Not associated with a job", cell_format)
+
+        # Set column widths
+        info_sheet.set_column("A:A", 15)
+        info_sheet.set_column("B:B", 30)
+
+        # Measurements worksheet
+        if measurements:
+            meas_sheet = workbook.add_worksheet("Measurements")
+
+            # Headers
+            headers = [
+                "Nbr.",
+                "Style",
+                "CONFIG",
+                "W",
+                "H",
+                "Door Design",
+                "PRIV",
+                "EG",
+                "Grids",
+                "Grid Config.",
+                "S/R",
+            ]
+
+            for col, header in enumerate(headers):
+                meas_sheet.write(0, col, header, header_format)
+
+            # Data
+            for row, measurement in enumerate(measurements, start=1):
+                meas_sheet.write(row, 0, measurement.nbr, cell_format)
+                meas_sheet.write(row, 1, measurement.style, cell_format)
+                meas_sheet.write(row, 2, measurement.config, cell_format)
+                meas_sheet.write(row, 3, measurement.width, cell_format)
+                meas_sheet.write(row, 4, measurement.height, cell_format)
+                meas_sheet.write(
+                    row, 5, "Yes" if measurement.door_design else "No", cell_format
+                )
+                meas_sheet.write(
+                    row, 6, "Yes" if measurement.priv else "No", cell_format
+                )
+                meas_sheet.write(row, 7, "Yes" if measurement.eg else "No", cell_format)
+                meas_sheet.write(
+                    row, 8, "Yes" if measurement.grids else "No", cell_format
+                )
+                meas_sheet.write(row, 9, measurement.grid_config, cell_format)
+                meas_sheet.write(
+                    row, 10, "Yes" if measurement.sr else "No", cell_format
+                )
+
+            # Set column widths
+            meas_sheet.set_column("A:A", 5)  # Nbr
+            meas_sheet.set_column("B:B", 8)  # Style
+            meas_sheet.set_column("C:C", 15)  # CONFIG
+            meas_sheet.set_column("D:D", 5)  # W
+            meas_sheet.set_column("E:E", 5)  # H
+            meas_sheet.set_column("F:F", 12)  # Door Design
+            meas_sheet.set_column("G:G", 6)  # PRIV
+            meas_sheet.set_column("H:H", 6)  # EG
+            meas_sheet.set_column("I:I", 8)  # Grids
+            meas_sheet.set_column("J:J", 15)  # Grid Config
+            meas_sheet.set_column("K:K", 6)  # S/R
+
+        # Estimate worksheet
+        if estimate:
+            est_sheet = workbook.add_worksheet("Estimate")
+
+            # Windows section
+            est_sheet.merge_range("A1:D1", "WINDOWS", header_format)
+            est_sheet.write(1, 0, "Category", header_format)
+            est_sheet.write(1, 1, "Amount", header_format)
+            est_sheet.write(1, 2, "QTY", header_format)
+            est_sheet.write(1, 3, "Total", header_format)
+
+            row = 2
+            est_sheet.write(row, 0, "Extra large 111+", cell_format)
+            est_sheet.write(row, 1, 450, money_format)
+            est_sheet.write(row, 2, estimate.extra_large_qty, cell_format)
+            est_sheet.write(row, 3, estimate.extra_large_qty * 450, money_format)
+            row += 1
+
+            est_sheet.write(row, 0, "Large 75-110", cell_format)
+            est_sheet.write(row, 1, 360, money_format)
+            est_sheet.write(row, 2, estimate.large_qty, cell_format)
+            est_sheet.write(row, 3, estimate.large_qty * 360, money_format)
+            row += 1
+
+            est_sheet.write(row, 0, "Small 1-74", cell_format)
+            est_sheet.write(row, 1, 300, money_format)
+            est_sheet.write(row, 2, estimate.small_qty, cell_format)
+            est_sheet.write(row, 3, estimate.small_qty * 300, money_format)
+            row += 1
+
+            est_sheet.write(row, 0, "Mull Door / Win", cell_format)
+            est_sheet.write(row, 1, 40, money_format)
+            est_sheet.write(row, 2, estimate.mull_qty, cell_format)
+            est_sheet.write(row, 3, estimate.mull_qty * 40, money_format)
+            row += 2
+
+            # Doors section
+            est_sheet.merge_range(f"A{row}:D{row}", "DOORS", header_format)
+            row += 1
+            est_sheet.write(row, 0, "Category", header_format)
+            est_sheet.write(row, 1, "Amount", header_format)
+            est_sheet.write(row, 2, "QTY", header_format)
+            est_sheet.write(row, 3, "Total", header_format)
+            row += 1
+
+            est_sheet.write(row, 0, "SFD", cell_format)
+            est_sheet.write(row, 1, 825, money_format)
+            est_sheet.write(row, 2, estimate.sfd_qty, cell_format)
+            est_sheet.write(row, 3, estimate.sfd_qty * 825, money_format)
+            row += 1
+
+            est_sheet.write(row, 0, "DFD", cell_format)
+            est_sheet.write(row, 1, 900, money_format)
+            est_sheet.write(row, 2, estimate.dfd_qty, cell_format)
+            est_sheet.write(row, 3, estimate.dfd_qty * 900, money_format)
+            row += 1
+
+            est_sheet.write(row, 0, "SGD", cell_format)
+            est_sheet.write(row, 1, 600, money_format)
+            est_sheet.write(row, 2, estimate.sgd_qty, cell_format)
+            est_sheet.write(row, 3, estimate.sgd_qty * 600, money_format)
+            row += 1
+
+            est_sheet.write(row, 0, "Extra Panels", cell_format)
+            est_sheet.write(row, 1, 225, money_format)
+            est_sheet.write(row, 2, estimate.extra_panels_qty, cell_format)
+            est_sheet.write(row, 3, estimate.extra_panels_qty * 225, money_format)
+            row += 1
+
+            est_sheet.write(row, 0, "Door Design/panel", cell_format)
+            est_sheet.write(row, 1, 1050, money_format)
+            est_sheet.write(row, 2, estimate.door_design_qty, cell_format)
+            est_sheet.write(row, 3, estimate.door_design_qty * 1050, money_format)
+            row += 1
+
+            est_sheet.write(row, 0, "Shutter Removal", cell_format)
+            est_sheet.write(row, 1, 40, money_format)
+            est_sheet.write(row, 2, estimate.shutter_removal_qty, cell_format)
+            est_sheet.write(row, 3, estimate.shutter_removal_qty * 40, money_format)
+            row += 2
+
+            # Permit section
+            est_sheet.merge_range(f"A{row}:D{row}", "PERMIT", header_format)
+            row += 1
+            est_sheet.write(row, 0, "PERMIT PREP", cell_format)
+            est_sheet.write(row, 1, 450, money_format)
+            est_sheet.write(row, 2, 1, cell_format)
+            est_sheet.write(row, 3, estimate.permit_cost, money_format)
+            row += 1
+
+            est_sheet.write(
+                row, 0, "LABOR TOTAL", workbook.add_format({"bold": True, "border": 1})
+            )
+            est_sheet.merge_range(f"B{row}:C{row}", "", cell_format)
+            est_sheet.write(row, 3, estimate.labor_total, money_format)
+            row += 2
+
+            # Marketing section
+            est_sheet.merge_range(f"A{row}:D{row}", "MARKETING", header_format)
+            row += 1
+            est_sheet.write(row, 0, "Referral/Marketing/Fee", cell_format)
+            est_sheet.write(row, 1, "", cell_format)
+            est_sheet.write(row, 2, estimate.marketing_fee, cell_format)
+            est_sheet.write(row, 3, estimate.marketing_fee, money_format)
+            row += 2
+
+            # Material section
+            est_sheet.merge_range(f"A{row}:D{row}", "MATERIAL", header_format)
+            row += 1
+            est_sheet.write(row, 0, "Material Cost", cell_format)
+            est_sheet.write(row, 1, "", cell_format)
+            est_sheet.write(row, 2, estimate.material_cost, cell_format)
+            est_sheet.write(row, 3, estimate.material_cost, money_format)
+            row += 1
+
+            est_sheet.write(row, 0, "Salesman Cost", cell_format)
+            est_sheet.merge_range(f"B{row}:C{row}", "", cell_format)
+            est_sheet.write(row, 3, estimate.salesman_cost, money_format)
+            row += 1
+
+            est_sheet.write(row, 0, "Markup", cell_format)
+            est_sheet.write(row, 1, "", cell_format)
+            est_sheet.write(row, 2, estimate.markup, cell_format)
+            est_sheet.write(row, 3, estimate.markup, money_format)
+            row += 2
+
+            # Totals
+            est_sheet.write(
+                row,
+                0,
+                "TOTAL CONTRACT AMOUNT",
+                workbook.add_format({"bold": True, "border": 1}),
+            )
+            est_sheet.merge_range(f"B{row}:C{row}", "", cell_format)
+            est_sheet.write(row, 3, estimate.total_contract, money_format)
+            row += 1
+
+            est_sheet.write(row, 0, "COMMISSION", cell_format)
+            est_sheet.merge_range(f"B{row}:C{row}", "", cell_format)
+            est_sheet.write(row, 3, estimate.commission, money_format)
+
+            # Set column widths
+            est_sheet.set_column("A:A", 25)
+            est_sheet.set_column("B:B", 10)
+            est_sheet.set_column("C:C", 8)
+            est_sheet.set_column("D:D", 12)
+
+        # Close the workbook
+        workbook.close()
+
+        # Send file to client
+        return_data = open(temp_file, "rb").read()
+        os.unlink(temp_file)  # Delete temp file
+
+        response = make_response(return_data)
+        response.headers["Content-Type"] = (
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response.headers["Content-Disposition"] = (
+            f"attachment; filename=report_{report_id}.xlsx"
+        )
+        return response
+
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()  # Print full error in console
+        flash(f"Error generating Excel file: {str(e)}", "error")
+        return redirect(url_for("view_report", report_id=report_id))
+
+
+@app.route("/export_report/<int:report_id>/pdf")
+def export_report_pdf(report_id):
+    """Displays a print-friendly version of the report that users can print to PDF"""
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    # Get the report
+    report = Report.query.get_or_404(report_id)
+
+    # Get all measurements for this report
+    measurements = (
+        Measurement.query.filter_by(report_id=report_id).order_by(Measurement.nbr).all()
+    )
+
+    # Get the estimate
+    estimate = Estimate.query.filter_by(report_id=report_id).first()
+
+    # Get job information if available
+    job = None
+    if report.job_id:
+        job = Job.query.get(report.job_id)
+
+    # Get report creator information
+    creator = User.query.get(report.user_id)
+
+    return render_template(
+        "print_report.html",
+        report=report,
+        measurements=measurements,
+        estimate=estimate,
+        job=job,
+        creator=creator,
+        hide_nav=True,  # Hide navigation to make it print-friendly
+    )
+
+
+@app.route("/job_reports/<int:job_id>")
+def job_reports(job_id):
+    """View all reports for a specific job"""
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    # Verify job exists and belongs to the user
+    job = Job.query.get_or_404(job_id)
+    if job.user_id != session["user_id"] and session.get("role") != "admin":
+        flash("You don't have permission to view this job's reports.", "error")
+        return redirect(url_for("dashboard"))
+
+    # Get all reports for this job
+    reports = (
+        Report.query.filter_by(job_id=job_id).order_by(Report.created_at.desc()).all()
+    )
+
+    # Get measurements counts
+    measurements_counts = {}
+    for report in reports:
+        count = Measurement.query.filter_by(report_id=report.id).count()
+        measurements_counts[report.id] = count
+
+    # Get estimate data
+    estimates = {}
+    for estimate in Estimate.query.filter(
+        Estimate.report_id.in_([r.id for r in reports])
+    ).all():
+        estimates[estimate.report_id] = estimate
+
+    return render_template(
+        "job_reports.html",
+        job=job,
+        reports=reports,
+        measurements_counts=measurements_counts,
+        estimates=estimates,
+    )
+
+
+@app.route("/link_report_to_job/<int:report_id>", methods=["POST"])
+def link_report_to_job(report_id):
+    """Link an existing report to a job"""
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    # Get the report
+    report = Report.query.get_or_404(report_id)
+
+    # Check permissions
+    if report.user_id != session["user_id"] and session.get("role") != "admin":
+        flash("You don't have permission to modify this report.", "error")
+        return redirect(url_for("reports"))
+
+    # Get job_id from form
+    job_id = request.form.get("job_id")
+    if not job_id:
+        flash("No job selected.", "error")
+        return redirect(url_for("view_report", report_id=report_id))
+
+    # Verify job exists
+    job = Job.query.get(job_id)
+    if not job:
+        flash("Selected job not found.", "error")
+        return redirect(url_for("view_report", report_id=report_id))
+
+    # Link report to job
+    report.job_id = job_id
+    db.session.commit()
+
+    flash(f"Report #{report_id} successfully linked to {job.job_number}.", "success")
+    return redirect(url_for("view_report", report_id=report_id))
 
 
 # -----------------------------------------------------------

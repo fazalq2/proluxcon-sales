@@ -1,0 +1,458 @@
+{% extends "base.html" %} {% block content %}
+
+<div class="print-container">
+  <div class="print-header">
+    <h1>Report #{{ report.id }}</h1>
+    <p>Created on {{ report.created_at.strftime('%m/%d/%Y %I:%M %p') }}</p>
+  </div>
+
+  <!-- Report Info -->
+  <div class="print-section">
+    <h2>Report Information</h2>
+    <table class="print-table">
+      <tr>
+        <th>Report ID:</th>
+        <td>{{ report.id }}</td>
+        <th>Related Job:</th>
+        <td>
+          {% if job %} {{ job.job_number }} - {{ job.name }} {% else %} Not
+          associated with a job {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <th>Created At:</th>
+        <td>{{ report.created_at.strftime('%m/%d/%Y %I:%M %p') }}</td>
+        <th>Client:</th>
+        <td>
+          {% if job and job.client %} {{ job.client.name }} {% else %} N/A {%
+          endif %}
+        </td>
+      </tr>
+      <tr>
+        <th>Created By:</th>
+        <td>{{ creator.name }}</td>
+        <td></td>
+        <td></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ESTIMATE SECTION -->
+  {% if estimate %}
+  <div class="print-section">
+    <h2>Estimate</h2>
+
+    <!-- Windows -->
+    <table class="print-table">
+      <tr class="section-header">
+        <th colspan="4">WINDOWS</th>
+      </tr>
+      <tr>
+        <th>Category</th>
+        <th>Amount</th>
+        <th>QTY</th>
+        <th>Total</th>
+      </tr>
+      <tr>
+        <td>Extra large 111+</td>
+        <td class="text-right">$450</td>
+        <td class="text-center">{{ estimate.extra_large_qty }}</td>
+        <td class="text-right">${{ estimate.extra_large_qty * 450 }}</td>
+      </tr>
+      <tr>
+        <td>Large 75-110</td>
+        <td class="text-right">$360</td>
+        <td class="text-center">{{ estimate.large_qty }}</td>
+        <td class="text-right">${{ estimate.large_qty * 360 }}</td>
+      </tr>
+      <tr>
+        <td>Small 1-74</td>
+        <td class="text-right">$300</td>
+        <td class="text-center">{{ estimate.small_qty }}</td>
+        <td class="text-right">${{ estimate.small_qty * 300 }}</td>
+      </tr>
+      <tr>
+        <td>Mull Door / Win</td>
+        <td class="text-right">$40</td>
+        <td class="text-center">{{ estimate.mull_qty }}</td>
+        <td class="text-right">${{ estimate.mull_qty * 40 }}</td>
+      </tr>
+    </table>
+
+    <!-- Doors -->
+    <table class="print-table">
+      <tr class="section-header">
+        <th colspan="4">DOORS</th>
+      </tr>
+      <tr>
+        <th>Category</th>
+        <th>Amount</th>
+        <th>QTY</th>
+        <th>Total</th>
+      </tr>
+      <tr>
+        <td>SFD</td>
+        <td class="text-right">$825</td>
+        <td class="text-center">{{ estimate.sfd_qty }}</td>
+        <td class="text-right">${{ estimate.sfd_qty * 825 }}</td>
+      </tr>
+      <tr>
+        <td>DFD</td>
+        <td class="text-right">$900</td>
+        <td class="text-center">{{ estimate.dfd_qty }}</td>
+        <td class="text-right">${{ estimate.dfd_qty * 900 }}</td>
+      </tr>
+      <tr>
+        <td>SGD</td>
+        <td class="text-right">$600</td>
+        <td class="text-center">{{ estimate.sgd_qty }}</td>
+        <td class="text-right">${{ estimate.sgd_qty * 600 }}</td>
+      </tr>
+      <tr>
+        <td>Extra Panels</td>
+        <td class="text-right">$225</td>
+        <td class="text-center">{{ estimate.extra_panels_qty }}</td>
+        <td class="text-right">${{ estimate.extra_panels_qty * 225 }}</td>
+      </tr>
+      <tr>
+        <td>Door Design/panel</td>
+        <td class="text-right">$1050</td>
+        <td class="text-center">{{ estimate.door_design_qty }}</td>
+        <td class="text-right">${{ estimate.door_design_qty * 1050 }}</td>
+      </tr>
+      <tr>
+        <td>Shutter Removal</td>
+        <td class="text-right">$40</td>
+        <td class="text-center">{{ estimate.shutter_removal_qty }}</td>
+        <td class="text-right">${{ estimate.shutter_removal_qty * 40 }}</td>
+      </tr>
+    </table>
+
+    <!-- Permit -->
+    <table class="print-table">
+      <tr class="section-header">
+        <th colspan="4">PERMIT</th>
+      </tr>
+      <tr>
+        <th>Category</th>
+        <th>Amount</th>
+        <th>QTY</th>
+        <th>Total</th>
+      </tr>
+      <tr>
+        <td>PERMIT PREP</td>
+        <td class="text-right">$450</td>
+        <td class="text-center">1</td>
+        <td class="text-right">${{ estimate.permit_cost }}</td>
+      </tr>
+      <tr class="total-row">
+        <td>LABOR TOTAL</td>
+        <td colspan="2"></td>
+        <td class="text-right">
+          ${{ '{:,.2f}'.format(estimate.labor_total) }}
+        </td>
+      </tr>
+    </table>
+
+    <!-- Marketing -->
+    <table class="print-table">
+      <tr class="section-header">
+        <th colspan="4">MARKETING</th>
+      </tr>
+      <tr>
+        <td>Referral/Marketing/Fee</td>
+        <td>$</td>
+        <td class="text-center">{{ estimate.marketing_fee }}</td>
+        <td class="text-right">
+          ${{ '{:,.2f}'.format(estimate.marketing_fee) }}
+        </td>
+      </tr>
+    </table>
+
+    <!-- Material -->
+    <table class="print-table">
+      <tr class="section-header">
+        <th colspan="4">MATERIAL</th>
+      </tr>
+      <tr>
+        <td>Material Cost</td>
+        <td>$</td>
+        <td class="text-center">{{ estimate.material_cost }}</td>
+        <td class="text-right">
+          ${{ '{:,.2f}'.format(estimate.material_cost) }}
+        </td>
+      </tr>
+      <tr>
+        <td>Salesman Cost</td>
+        <td colspan="2"></td>
+        <td class="text-right">
+          ${{ '{:,.2f}'.format(estimate.salesman_cost) }}
+        </td>
+      </tr>
+      <tr>
+        <td>Markup</td>
+        <td>$</td>
+        <td class="text-center">{{ estimate.markup }}</td>
+        <td class="text-right">${{ '{:,.2f}'.format(estimate.markup) }}</td>
+      </tr>
+    </table>
+
+    <!-- Totals -->
+    <table class="print-table">
+      <tr class="total-row">
+        <td>TOTAL CONTRACT AMOUNT</td>
+        <td colspan="2"></td>
+        <td class="text-right">
+          ${{ '{:,.2f}'.format(estimate.total_contract) }}
+        </td>
+      </tr>
+      <tr>
+        <td>COMMISSION</td>
+        <td colspan="2"></td>
+        <td class="text-right">${{ '{:,.2f}'.format(estimate.commission) }}</td>
+      </tr>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- MEASUREMENTS SECTION -->
+  {% if measurements %}
+  <div class="print-section">
+    <h2>Measurements</h2>
+    <table class="print-table">
+      <thead>
+        <tr>
+          <th>Nbr.</th>
+          <th>Style</th>
+          <th>CONFIG</th>
+          <th>W</th>
+          <th>H</th>
+          <th>Door Design</th>
+          <th>PRIV</th>
+          <th>EG</th>
+          <th>Grids</th>
+          <th>Grid Config.</th>
+          <th>S/R</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for measurement in measurements %}
+        <tr>
+          <td class="text-center">{{ measurement.nbr }}</td>
+          <td>{{ measurement.style }}</td>
+          <td>{{ measurement.config }}</td>
+          <td class="text-center">{{ measurement.width }}</td>
+          <td class="text-center">{{ measurement.height }}</td>
+          <td class="text-center">
+            {{ "Yes" if measurement.door_design else "No" }}
+          </td>
+          <td class="text-center">{{ "Yes" if measurement.priv else "No" }}</td>
+          <td class="text-center">{{ "Yes" if measurement.eg else "No" }}</td>
+          <td class="text-center">
+            {{ "Yes" if measurement.grids else "No" }}
+          </td>
+          <td>{{ measurement.grid_config }}</td>
+          <td class="text-center">{{ "Yes" if measurement.sr else "No" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="print-footer">
+    <p>
+      ProLuxCon - Report #{{ report.id }} - Generated on {{
+      now().strftime('%m/%d/%Y %I:%M %p') }}
+    </p>
+  </div>
+
+  <div class="screen-only">
+    <div class="btn-print">
+      <button onclick="window.print()" class="btn">
+        <i class="fas fa-print"></i> Print this Report
+      </button>
+      <a href="/view_report/{{ report.id }}" class="btn">
+        <i class="fas fa-arrow-left"></i> Back to Report
+      </a>
+    </div>
+  </div>
+
+  <script>
+    // Auto-print when the page loads (optional - remove if you prefer manual printing)
+    // window.onload = function() {
+    //   window.print();
+    // }
+  </script>
+</div>
+
+<style>
+  /* Print-specific styles */
+  @media print {
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 11pt;
+      margin: 0;
+      padding: 0;
+    }
+
+    .print-container {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .print-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .print-header h1 {
+      font-size: 18pt;
+      margin-bottom: 5px;
+    }
+
+    .print-section {
+      margin-bottom: 20px;
+      page-break-inside: avoid;
+    }
+
+    .print-section h2 {
+      font-size: 14pt;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 5px;
+    }
+
+    .print-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+
+    .print-table th,
+    .print-table td {
+      border: 1px solid #ddd;
+      padding: 5px;
+      text-align: left;
+      font-size: 10pt;
+    }
+
+    .print-table th {
+      background-color: #f5f5f5 !important;
+      font-weight: bold;
+    }
+
+    .section-header th {
+      background-color: #333 !important;
+      color: white !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .total-row {
+      font-weight: bold;
+      background-color: #f5f5f5 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    .print-footer {
+      text-align: center;
+      font-size: 9pt;
+      color: #999;
+      margin-top: 20px;
+    }
+
+    /* Hide non-print elements */
+    header,
+    footer,
+    .screen-only,
+    nav,
+    .container > *:not(.print-container) {
+      display: none !important;
+    }
+
+    /* Force page breaks */
+    .page-break {
+      page-break-before: always;
+    }
+  }
+
+  /* Screen-only styles */
+  @media screen {
+    .print-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: white;
+    }
+
+    .print-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .print-section {
+      margin-bottom: 20px;
+      border: 1px solid #eee;
+      padding: 15px;
+      border-radius: 5px;
+    }
+
+    .print-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+
+    .print-table th,
+    .print-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+
+    .print-table th {
+      background-color: #f5f5f5;
+      font-weight: bold;
+    }
+
+    .section-header th {
+      background-color: #333;
+      color: white;
+    }
+
+    .total-row {
+      font-weight: bold;
+      background-color: #f9f9f9;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    .btn-print {
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .btn-print .btn {
+      padding: 10px 20px;
+      margin: 0 10px;
+    }
+  }
+</style>
+
+{% endblock %}

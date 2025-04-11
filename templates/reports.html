@@ -1,4 +1,353 @@
 {% extends "base.html" %} {% block content %}
-<h1>Reports</h1>
-<p>Analytics, usage stats, or business intelligence reports go here.</p>
+
+<h1 class="page-title">Reports</h1>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">All Reports</h2>
+    <div>
+      <a href="/measure_labor" class="btn">
+        <i class="fas fa-plus"></i> Create New Report
+      </a>
+    </div>
+  </div>
+
+  <div class="filter-controls" style="margin-bottom: 20px; padding: 0 15px">
+    <div class="row">
+      <div class="col-md-4">
+        <label for="date-filter">Date Range:</label>
+        <select id="date-filter" class="form-control">
+          <option value="all">All Time</option>
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month" selected>This Month</option>
+          <option value="year">This Year</option>
+        </select>
+      </div>
+
+      {% if is_admin %}
+      <div class="col-md-4">
+        <label for="user-filter">User:</label>
+        <select id="user-filter" class="form-control">
+          <option value="all">All Users</option>
+          {% for user_id, user_name in users.items() %}
+          <option value="{{ user_id }}">{{ user_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <div class="col-md-4">
+        <label for="sort-by">Sort By:</label>
+        <select id="sort-by" class="form-control">
+          <option value="date-desc">Date (Newest First)</option>
+          <option value="date-asc">Date (Oldest First)</option>
+          <option value="value-desc">Value (Highest First)</option>
+          <option value="value-asc">Value (Lowest First)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-striped" id="reports-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Date Created</th>
+          {% if is_admin %}
+          <th>Created By</th>
+          {% endif %}
+          <th>Job</th>
+          <th>Measurements</th>
+          <th>Total Value</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for report in reports %}
+        <tr data-user-id="{{ report.user_id }}">
+          <td>{{ report.id }}</td>
+          <td>{{ report.created_at.strftime('%m/%d/%Y %I:%M %p') }}</td>
+
+          {% if is_admin %}
+          <td>{{ users.get(report.user_id, 'Unknown') }}</td>
+          {% endif %}
+
+          <td>
+            {% if report.job_id and report.id in job_info %}
+            <a href="/view-job/{{ report.job_id }}">
+              {{ job_info[report.id]['job_number'] }} - {{
+              job_info[report.id]['job_name'] }}
+            </a>
+            {% else %}
+            <span class="text-muted">No Job</span>
+            {% endif %}
+          </td>
+
+          <td>{{ measurements_counts.get(report.id, 0) }}</td>
+
+          <td>
+            {% if report.id in estimates %} ${{
+            '{:,.2f}'.format(estimates[report.id].total_contract) }} {% else %}
+            $0.00 {% endif %}
+          </td>
+
+          <td>
+            <div class="btn-group">
+              <a
+                href="/view_report/{{ report.id }}"
+                class="btn btn-sm btn-primary"
+                title="View Report"
+              >
+                <i class="fas fa-eye"></i>
+              </a>
+
+              {% if is_admin %}
+              <a
+                href="/edit_report/{{ report.id }}"
+                class="btn btn-sm btn-info"
+                title="Edit Report"
+              >
+                <i class="fas fa-edit"></i>
+              </a>
+              {% endif %}
+
+              <form
+                action="/delete_report/{{ report.id }}"
+                method="POST"
+                class="d-inline"
+                onsubmit="return confirm('Are you sure you want to delete this report?');"
+              >
+                <button
+                  type="submit"
+                  class="btn btn-sm btn-danger"
+                  title="Delete Report"
+                >
+                  <i class="fas fa-trash"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td
+            colspan="{% if is_admin %}7{% else %}6{% endif %}"
+            class="text-center"
+          >
+            No reports found.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Get filter elements
+    const dateFilter = document.getElementById('date-filter');
+    const sortBy = document.getElementById('sort-by');
+    const userFilter = document.getElementById('user-filter');
+
+    // Add event listeners to filters
+    dateFilter.addEventListener('change', applyFilters);
+    sortBy.addEventListener('change', applyFilters);
+    if (userFilter) {
+      userFilter.addEventListener('change', applyFilters);
+    }
+
+    // Initial table setup
+    applyFilters();
+
+    function applyFilters() {
+      const rows = Array.from(document.querySelectorAll('#reports-table tbody tr'));
+      if (rows.length === 0 || (rows.length === 1 && rows[0].cells.length === 1)) {
+        // No data or "No reports found" message
+        return;
+      }
+
+      // Filter by date
+      filterByDate(rows, dateFilter.value);
+
+      // Filter by user (admin only)
+      if (userFilter && {{ 'true' if is_admin else 'false' }}) {
+        filterByUser(rows, userFilter.value);
+      }
+
+      // Sort rows
+      sortRows(rows, sortBy.value);
+
+      // Update table
+      const tbody = document.querySelector('#reports-table tbody');
+      tbody.innerHTML = '';
+      const visibleRows = rows.filter(row =>
+        !row.classList.contains('hidden') &&
+        !row.classList.contains('hidden-user')
+      );
+
+      if (visibleRows.length === 0) {
+        // Add "No reports found" message
+        const emptyRow = document.createElement('tr');
+        const emptyCell = document.createElement('td');
+        emptyCell.setAttribute('colspan', '{{ "7" if is_admin else "6" }}');
+        emptyCell.className = 'text-center';
+        emptyCell.textContent = 'No reports found matching the current filters.';
+        emptyRow.appendChild(emptyCell);
+        tbody.appendChild(emptyRow);
+      } else {
+        // Add visible rows
+        visibleRows.forEach(row => tbody.appendChild(row));
+      }
+    }
+
+    function filterByDate(rows, dateValue) {
+      if (dateValue === 'all') {
+        rows.forEach(row => row.classList.remove('hidden'));
+        return;
+      }
+
+      const today = new Date();
+      const startDate = new Date();
+
+      // Set start date based on filter
+      switch (dateValue) {
+        case 'today':
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'week':
+          startDate.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'month':
+          startDate.setDate(1); // Start of month
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'year':
+          startDate.setMonth(0, 1); // Start of year
+          startDate.setHours(0, 0, 0, 0);
+          break;
+      }
+
+      rows.forEach(row => {
+        const dateStr = row.cells[1].textContent.trim();
+        const rowDate = new Date(dateStr);
+
+        if (rowDate >= startDate) {
+          row.classList.remove('hidden');
+        } else {
+          row.classList.add('hidden');
+        }
+      });
+    }
+
+    function filterByUser(rows, userId) {
+      if (userId === 'all') {
+        rows.forEach(row => row.classList.remove('hidden-user'));
+        return;
+      }
+
+      rows.forEach(row => {
+        const rowUserId = row.getAttribute('data-user-id');
+        if (rowUserId === userId) {
+          row.classList.remove('hidden-user');
+        } else {
+          row.classList.add('hidden-user');
+        }
+      });
+    }
+
+    function sortRows(rows, sortValue) {
+      const sortingFunctions = {
+        'date-desc': (a, b) => {
+          return new Date(b.cells[1].textContent) - new Date(a.cells[1].textContent);
+        },
+        'date-asc': (a, b) => {
+          return new Date(a.cells[1].textContent) - new Date(b.cells[1].textContent);
+        },
+        'value-desc': (a, b) => {
+          const aValue = parseFloat(a.cells[{{ '5' if is_admin else '4' }}].textContent.replace('$', '').replace(',', '')) || 0;
+          const bValue = parseFloat(b.cells[{{ '5' if is_admin else '4' }}].textContent.replace('$', '').replace(',', '')) || 0;
+          return bValue - aValue;
+        },
+        'value-asc': (a, b) => {
+          const aValue = parseFloat(a.cells[{{ '5' if is_admin else '4' }}].textContent.replace('$', '').replace(',', '')) || 0;
+          const bValue = parseFloat(b.cells[{{ '5' if is_admin else '4' }}].textContent.replace('$', '').replace(',', '')) || 0;
+          return aValue - bValue;
+        }
+      };
+
+      rows.sort(sortingFunctions[sortValue]);
+    }
+  });
+</script>
+
+<style>
+  .hidden,
+  .hidden-user {
+    display: none;
+  }
+
+  .filter-controls .row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-right: -15px;
+    margin-left: -15px;
+  }
+
+  .filter-controls .col-md-4 {
+    position: relative;
+    width: 33.333333%;
+    padding-right: 15px;
+    padding-left: 15px;
+    box-sizing: border-box;
+  }
+
+  .filter-controls label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+
+  .filter-controls .form-control {
+    display: block;
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #495057;
+    background-color: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+  }
+
+  /* Action buttons styling */
+  .btn-group {
+    display: flex;
+    gap: 5px;
+  }
+
+  .btn-group .btn {
+    padding: 0.25rem 0.5rem;
+  }
+
+  .btn-info {
+    background-color: #17a2b8;
+    color: white;
+  }
+
+  .btn-info:hover {
+    background-color: #138496;
+  }
+
+  @media (max-width: 768px) {
+    .filter-controls .col-md-4 {
+      width: 100%;
+      margin-bottom: 15px;
+    }
+  }
+</style>
+
 {% endblock %}

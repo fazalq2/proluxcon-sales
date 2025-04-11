@@ -1,6 +1,57 @@
 {% extends "base.html" %} {% block content %}
 
-<h1 class="page-title">Measure / Labor</h1>
+<!-- Replace the existing title -->
+<h1 class="page-title">
+  {% if job %} Create Report for {{ job.job_number }} - {{ job.name }} {% else
+  %} Measure / Labor {% endif %}
+</h1>
+<!-- Add this right before your first card or after the h1 -->
+{% if job %}
+<input type="hidden" id="job-id" value="{{ job.id }}" />
+{% endif %}
+<!-- Job Information Panel (only shown when job is provided) -->
+{% if job %}
+<div class="card" style="margin-bottom: 2rem">
+  <div class="card-header">
+    <h2 class="card-title"><i class="fas fa-briefcase"></i> Job Information</h2>
+  </div>
+  <div class="card-body">
+    <div class="row" style="display: flex; flex-wrap: wrap; margin: 0 -15px">
+      <div class="col" style="flex: 1; min-width: 200px; padding: 0 15px">
+        <p><strong>Job #:</strong> {{ job.job_number }}</p>
+        <p><strong>Job Name:</strong> {{ job.name }}</p>
+        <p>
+          <strong>Status:</strong>
+          <span class="status-badge {{ job.status }}"
+            >{{ job.status|title }}</span
+          >
+        </p>
+      </div>
+      <div class="col" style="flex: 1; min-width: 200px; padding: 0 15px">
+        {% if client %}
+        <p><strong>Client:</strong> {{ client.name }}</p>
+        {% if client.phone %}
+        <p><strong>Phone:</strong> {{ client.phone }}</p>
+        {% endif %} {% if client.email %}
+        <p><strong>Email:</strong> {{ client.email }}</p>
+        {% endif %} {% endif %}
+      </div>
+      <div
+        class="col"
+        style="flex: 1; min-width: 200px; padding: 0 15px; text-align: right"
+      >
+        <a
+          href="{{ url_for('view_job', job_id=job.id) }}"
+          class="btn"
+          style="margin-bottom: 10px"
+        >
+          <i class="fas fa-eye"></i> View Job Details
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- ESTIMATE SECTION ON TOP -->
 <div class="card" style="margin-bottom: 2rem">
@@ -310,6 +361,11 @@
       <button class="btn btn-sm" id="create-template-btn">
         Create Template
       </button>
+      {% if job %}
+      <a href="{{ url_for('view_job', job_id=job.id) }}" class="btn btn-sm">
+        <i class="fas fa-times"></i> Cancel
+      </a>
+      {% endif %}
       <!-- Save Report Button -->
       <button class="btn" id="save-report-btn">
         <i class="fas fa-save"></i> Save Report
@@ -936,7 +992,11 @@
 
       // Prepare request data
       const requestData = { measurements, estimate };
-
+      // Add job_id if present
+      const jobIdField = document.getElementById("job-id");
+      if (jobIdField) {
+        requestData.job_id = jobIdField.value;
+      }
       fetch("/save_report", {
         method: "POST",
         headers: {
@@ -949,7 +1009,7 @@
         .then((response) => {
           console.log("Response status:", response.status);
           const contentType = response.headers.get("Content-Type");
-          console.log("Content-Type:", contentType);
+          console.log("Content-Typ.e:", contentType);
 
           if (contentType && contentType.includes("text/html")) {
             throw new Error("Session expired. Please log in again.");
@@ -976,7 +1036,21 @@
             throw new Error(data.error);
           }
           console.log("Save successful:", data);
-          alert(`Report saved successfully! Report ID: ${data.report_id}`);
+
+          // Check if we were editing for a job
+          const jobIdField = document.getElementById("job-id");
+          if (jobIdField) {
+            if (
+              confirm(
+                `Report #${data.report_id} saved successfully! View job details?`
+              )
+            ) {
+              window.location.href = `/view-job/${jobIdField.value}`;
+              return;
+            }
+          } else {
+            alert(`Report saved successfully! Report ID: ${data.report_id}`);
+          }
         })
         .catch((error) => {
           console.error("Save error:", error);
@@ -1005,89 +1079,6 @@
       saveBtn.disabled = false;
     }
   }
-
-  // Debug Tools
-  function addDebugPanel() {
-    const debugPanel = document.createElement("div");
-    debugPanel.className = "debug-panel";
-    debugPanel.style.cssText =
-      "position: fixed; bottom: 10px; right: 10px; background: #f8f9fa; border: 1px solid #ccc; padding: 10px; z-index: 9999; border-radius: 4px;";
-    debugPanel.innerHTML = `
-      <div style="font-weight: bold; margin-bottom: 5px;">Debug Tools</div>
-      <button id="test-session-btn" style="margin-right: 5px;">Check Session</button>
-      <button id="test-save-btn">Test Simple Save</button>
-    `;
-    document.body.appendChild(debugPanel);
-
-    // Event listeners for debug
-    document
-      .getElementById("test-session-btn")
-      .addEventListener("click", checkSession);
-    document
-      .getElementById("test-save-btn")
-      .addEventListener("click", testSimpleSave);
-  }
-
-  function checkSession() {
-    fetch("/check_login", {
-      method: "GET",
-      headers: { "X-Requested-With": "XMLHttpRequest" },
-      credentials: "same-origin",
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        console.log("Session status:", data);
-        alert(
-          data.logged_in
-            ? `Logged in as: ${data.user_email} (ID: ${data.user_id}, Role: ${data.user_role})`
-            : "Not logged in"
-        );
-      })
-      .catch((error) => {
-        console.error("Session check failed:", error);
-        alert("Session check failed: " + error.message);
-      });
-  }
-
-  function testSimpleSave() {
-    const testData = { test: true, timestamp: new Date().toISOString() };
-    fetch("/test_save", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Requested-With": "XMLHttpRequest",
-      },
-      body: JSON.stringify(testData),
-      credentials: "same-origin",
-    })
-      .then((response) => response.text())
-      .then((text) => {
-        console.log("Raw test response:", text);
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          throw new Error("Invalid JSON response: " + text.substring(0, 100));
-        }
-        return data;
-      })
-      .then((data) => {
-        console.log("Test save result:", data);
-        alert(
-          data.success
-            ? `Test save successful! Report ID: ${data.report_id}`
-            : `Test save failed: ${data.error}`
-        );
-      })
-      .catch((error) => {
-        console.error("Test save error:", error);
-        alert("Test save failed: " + error.message);
-      });
-  }
-
-  document.addEventListener("DOMContentLoaded", function () {
-    addDebugPanel();
-  });
 </script>
 
 {% endblock %}

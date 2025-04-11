@@ -1,0 +1,513 @@
+{% extends "base.html" %} {% block content %}
+
+<h1 class="page-title">
+  Report #{{ report.id }}
+  <small
+    >Created on {{ report.created_at.strftime('%m/%d/%Y %I:%M %p') }}</small
+  >
+</h1>
+
+{% if not job and (session.role == 'admin' or report.user_id == session.user_id)
+%}
+<div class="card" style="margin-top: 2rem">
+  <div class="card-header">
+    <h2 class="card-title">Link to Job</h2>
+  </div>
+  <div class="card-body">
+    <form action="/link_report_to_job/{{ report.id }}" method="POST">
+      <div class="form-group">
+        <label for="job_id">Select Job:</label>
+        <select name="job_id" id="job_id" class="form-control" required>
+          <option value="">-- Select a Job --</option>
+          {% for job in jobs %}
+          <option value="{{ job.id }}">
+            {{ job.job_number }} - {{ job.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn">Link Report to Job</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+<!-- <-- Add this endif -->
+
+<div class="action-buttons" style="margin-bottom: 20px">
+  <a href="/reports" class="btn">
+    <i class="fas fa-arrow-left"></i> Back to Reports
+  </a>
+
+  {% if job %}
+  <a href="/view-job/{{ job.id }}" class="btn">
+    <i class="fas fa-briefcase"></i> View Job: {{ job.job_number }}
+  </a>
+  {% endif %} {% if session.role == 'admin' %}
+  <a href="/edit_report/{{ report.id }}" class="btn btn-primary">
+    <i class="fas fa-edit"></i> Edit Report
+  </a>
+  {% endif %} {% if session.role == 'admin' or report.user_id == session.user_id
+  %}
+  <form
+    action="/delete_report/{{ report.id }}"
+    method="POST"
+    class="d-inline"
+    onsubmit="return confirm('Are you sure you want to delete this report?');"
+  >
+    <button type="submit" class="btn btn-danger">
+      <i class="fas fa-trash"></i> Delete Report
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+<!-- Report Info -->
+<div class="card" style="margin-bottom: 2rem">
+  <div class="card-header">
+    <h2 class="card-title">Report Information</h2>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col">
+        <p><strong>Report ID:</strong> {{ report.id }}</p>
+        <p>
+          <strong>Created At:</strong> {{ report.created_at.strftime('%m/%d/%Y
+          %I:%M %p') }}
+        </p>
+        <p><strong>Created By:</strong> {{ creator.name }}</p>
+      </div>
+
+      <div class="col">
+        <p>
+          <strong>Related Job:</strong>
+          {% if job %}
+          <a href="/view-job/{{ job.id }}"
+            >{{ job.job_number }} - {{ job.name }}</a
+          >
+          {% else %} Not associated with a job {% endif %}
+        </p>
+
+        <p>
+          <strong>Client:</strong>
+          {% if job and job.client %} {{ job.client.name }} {% else %} N/A {%
+          endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ESTIMATE SECTION -->
+<div class="card" style="margin-bottom: 2rem">
+  <div class="card-header">
+    <h2 class="card-title">Estimate</h2>
+  </div>
+
+  {% if estimate %}
+  <!-- Three-column layout: Windows, Doors, Permit/Marketing/Material -->
+  <div class="estimate-row">
+    <!-- WINDOWS COLUMN -->
+    <div class="estimate-col">
+      <table class="estimate-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>QTY</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Windows -->
+          <tr class="section-header">
+            <td colspan="4">WINDOWS</td>
+          </tr>
+          <tr>
+            <td>Extra large 111+</td>
+            <td>$450</td>
+            <td>{{ estimate.extra_large_qty }}</td>
+            <td>${{ estimate.extra_large_qty * 450 }}</td>
+          </tr>
+          <tr>
+            <td>Large 75-110</td>
+            <td>$360</td>
+            <td>{{ estimate.large_qty }}</td>
+            <td>${{ estimate.large_qty * 360 }}</td>
+          </tr>
+          <tr>
+            <td>Small 1-74</td>
+            <td>$300</td>
+            <td>{{ estimate.small_qty }}</td>
+            <td>${{ estimate.small_qty * 300 }}</td>
+          </tr>
+          <tr>
+            <td>Mull Door / Win</td>
+            <td>$40</td>
+            <td>{{ estimate.mull_qty }}</td>
+            <td>${{ estimate.mull_qty * 40 }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- END WINDOWS COLUMN -->
+
+    <!-- DOORS COLUMN -->
+    <div class="estimate-col">
+      <table class="estimate-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>QTY</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="section-header">
+            <td colspan="4">DOORS</td>
+          </tr>
+          <tr>
+            <td>SFD</td>
+            <td>$825</td>
+            <td>{{ estimate.sfd_qty }}</td>
+            <td>${{ estimate.sfd_qty * 825 }}</td>
+          </tr>
+          <tr>
+            <td>DFD</td>
+            <td>$900</td>
+            <td>{{ estimate.dfd_qty }}</td>
+            <td>${{ estimate.dfd_qty * 900 }}</td>
+          </tr>
+          <tr>
+            <td>SGD</td>
+            <td>$600</td>
+            <td>{{ estimate.sgd_qty }}</td>
+            <td>${{ estimate.sgd_qty * 600 }}</td>
+          </tr>
+          <tr>
+            <td>Extra Panels</td>
+            <td>$225</td>
+            <td>{{ estimate.extra_panels_qty }}</td>
+            <td>${{ estimate.extra_panels_qty * 225 }}</td>
+          </tr>
+          <tr>
+            <td>Door Design/panel</td>
+            <td>$1050</td>
+            <td>{{ estimate.door_design_qty }}</td>
+            <td>${{ estimate.door_design_qty * 1050 }}</td>
+          </tr>
+          <tr>
+            <td>Shutter Removal</td>
+            <td>$40</td>
+            <td>{{ estimate.shutter_removal_qty }}</td>
+            <td>${{ estimate.shutter_removal_qty * 40 }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- END DOORS COLUMN -->
+
+    <!-- PERMIT / MARKETING / MATERIAL COLUMN -->
+    <div class="estimate-col">
+      <table class="estimate-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>QTY</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- PERMIT -->
+          <tr class="section-header">
+            <td colspan="4">PERMIT</td>
+          </tr>
+          <tr>
+            <td>PERMIT PREP</td>
+            <td>$450</td>
+            <td>1</td>
+            <td>${{ estimate.permit_cost }}</td>
+          </tr>
+          <tr style="font-weight: bold">
+            <td>LABOR TOTAL</td>
+            <td colspan="2"></td>
+            <td>${{ '{:,.2f}'.format(estimate.labor_total) }}</td>
+          </tr>
+
+          <!-- MARKETING -->
+          <tr class="section-header">
+            <td colspan="4">MARKETING</td>
+          </tr>
+          <tr>
+            <td>Referral/Marketing/Fee</td>
+            <td>$</td>
+            <td>{{ estimate.marketing_fee }}</td>
+            <td>${{ '{:,.2f}'.format(estimate.marketing_fee) }}</td>
+          </tr>
+
+          <!-- MATERIAL -->
+          <tr class="section-header">
+            <td colspan="4">MATERIAL</td>
+          </tr>
+          <tr>
+            <td>Material Cost</td>
+            <td>$</td>
+            <td>{{ estimate.material_cost }}</td>
+            <td>${{ '{:,.2f}'.format(estimate.material_cost) }}</td>
+          </tr>
+          <tr>
+            <td>Salesman Cost</td>
+            <td colspan="2"></td>
+            <td>${{ '{:,.2f}'.format(estimate.salesman_cost) }}</td>
+          </tr>
+          <tr>
+            <td>Markup</td>
+            <td>$</td>
+            <td>{{ estimate.markup }}</td>
+            <td>${{ '{:,.2f}'.format(estimate.markup) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- END PERMIT / MARKETING / MATERIAL COLUMN -->
+  </div>
+
+  <!-- TOTAL CONTRACT AMOUNT + COMMISSION AT THE BOTTOM -->
+  <div style="margin-top: 1rem">
+    <table style="width: 100%; border-collapse: collapse">
+      <tbody>
+        <tr style="font-weight: bold; background: #f5f5f5">
+          <td style="padding: 0.75rem">TOTAL CONTRACT AMOUNT</td>
+          <td colspan="2"></td>
+          <td style="text-align: right; padding: 0.75rem">
+            ${{ '{:,.2f}'.format(estimate.total_contract) }}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 0.75rem">COMMISSION</td>
+          <td colspan="2"></td>
+          <td style="text-align: right; padding: 0.75rem">
+            ${{ '{:,.2f}'.format(estimate.commission) }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body">
+    <p class="text-center">No estimate data found for this report.</p>
+  </div>
+  {% endif %}
+</div>
+<!-- END ESTIMATE SECTION -->
+
+<!-- MEASUREMENT / LABOR TABLE SECTION -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Measurements</h2>
+  </div>
+
+  {% if measurements %}
+  <div class="table-responsive">
+    <table
+      id="measurements-table"
+      style="width: 100%; border-collapse: collapse; table-layout: fixed"
+    >
+      <thead>
+        <tr>
+          <th style="width: 40px">Nbr.</th>
+          <th style="width: 80px">Style</th>
+          <th style="width: 80px">CONFIG</th>
+          <th style="width: 40px">W</th>
+          <th style="width: 40px">H</th>
+          <th style="width: 90px">Door Design</th>
+          <th style="width: 60px">PRIV</th>
+          <th style="width: 60px">EG</th>
+          <th style="width: 80px">Grids</th>
+          <th style="width: 80px">Grid Config.</th>
+          <th style="width: 60px">S/R</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for measurement in measurements %}
+        <tr>
+          <td>{{ measurement.nbr }}</td>
+          <td>{{ measurement.style }}</td>
+          <td>{{ measurement.config }}</td>
+          <td>{{ measurement.width }}</td>
+          <td>{{ measurement.height }}</td>
+          <td>{{ "Yes" if measurement.door_design else "No" }}</td>
+          <td>{{ "Yes" if measurement.priv else "No" }}</td>
+          <td>{{ "Yes" if measurement.eg else "No" }}</td>
+          <td>{{ "Yes" if measurement.grids else "No" }}</td>
+          <td>{{ measurement.grid_config }}</td>
+          <td>{{ "Yes" if measurement.sr else "No" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body">
+    <p class="text-center">No measurements found for this report.</p>
+  </div>
+  {% endif %}
+</div>
+<!-- END MEASUREMENT / LABOR TABLE SECTION -->
+
+<!-- Print and Export Section (Admin only) -->
+<div class="card" style="margin-top: 2rem">
+  <div class="card-header">
+    <h2 class="card-title">Report Actions</h2>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col text-center">
+        <button id="print-report-btn" class="btn btn-lg">
+          <i class="fas fa-print"></i> Print Report
+        </button>
+        <button id="export-pdf-btn" class="btn btn-lg">
+          <i class="fas fa-file-pdf"></i> Export as PDF
+        </button>
+        <button id="export-excel-btn" class="btn btn-lg">
+          <i class="fas fa-file-excel"></i> Export to Excel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Styles for the estimate section */
+  .estimate-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -15px;
+  }
+
+  .estimate-col {
+    flex: 1;
+    min-width: 300px;
+    padding: 0 15px;
+    margin-bottom: 20px;
+  }
+
+  .estimate-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .estimate-table th,
+  .estimate-table td {
+    padding: 8px;
+    border: 1px solid #ddd;
+    text-align: left;
+  }
+
+  .estimate-table th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+  }
+
+  .section-header {
+    background-color: #e9ecef;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  /* Styles for the measurements table */
+  #measurements-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  #measurements-table th,
+  #measurements-table td {
+    padding: 8px;
+    border: 1px solid #ddd;
+    text-align: center;
+  }
+
+  #measurements-table th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+  }
+
+  /* Action buttons */
+  .action-buttons .btn {
+    margin-right: 10px;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 991px) {
+    .estimate-col {
+      flex: 0 0 100%;
+    }
+  }
+
+  /* Print styles */
+  @media print {
+    .action-buttons,
+    .btn,
+    form {
+      display: none !important;
+    }
+
+    .card {
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    .card-header {
+      background-color: transparent !important;
+      border-bottom: 1px solid #000 !important;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Print functionality
+    const printBtn = document.getElementById("print-report-btn");
+    if (printBtn) {
+      printBtn.addEventListener("click", function () {
+        window.print();
+      });
+    }
+
+    // Export functionality would require backend processing
+    // These are placeholder buttons that would need server-side implementation
+    const pdfBtn = document.getElementById("export-pdf-btn");
+    if (pdfBtn) {
+      pdfBtn.addEventListener("click", function () {
+        window.location.href = "/export_report/{{ report.id }}/pdf";
+      });
+    }
+
+    const excelBtn = document.getElementById("export-excel-btn");
+    if (excelBtn) {
+      excelBtn.addEventListener("click", function () {
+        window.location.href = "/export_report/{{ report.id }}/excel";
+      });
+    }
+  });
+</script>
+<script>
+  // Fetch available jobs for the dropdown when the page loads
+  document.addEventListener("DOMContentLoaded", function () {
+    fetch("/api/user_jobs")
+      .then((response) => response.json())
+      .then((data) => {
+        const jobSelect = document.getElementById("job_id");
+        data.jobs.forEach((job) => {
+          const option = document.createElement("option");
+          option.value = job.id;
+          option.textContent = `${job.job_number} - ${job.name}`;
+          jobSelect.appendChild(option);
+        });
+      })
+      .catch((error) => console.error("Error fetching jobs:", error));
+  });
+</script>
+{% endblock %}
