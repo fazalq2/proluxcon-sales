@@ -1003,69 +1003,235 @@ def delete_job_api(job_id):
         return jsonify({"success": False, "message": str(e)}), 500
 
 
+# Create Jobs
 @app.route("/create-job", methods=["GET", "POST"])
 def create_job():
-    # Ensure the user is logged in
     if "user_id" not in session:
         flash("Please log in to create a job.", "error")
         return redirect(url_for("login"))
 
+    user_id = session["user_id"]
+    role = session.get("role", "sales")
+
     if request.method == "POST":
         # Retrieve form data
-        job_number = request.form.get("job_number")
-        name = request.form.get("name")
+        job_number = request.form.get("job_number", "").strip()
+        name = request.form.get("name", "").strip()
+        status = request.form.get("status", "pending").strip()
         client_id = request.form.get("client_id")
-        description = request.form.get("description")
+        description = request.form.get("description", "").strip()
+        installation_address = request.form.get("installation_address", "").strip()
 
-        # Validate required fields
-        if not job_number or not name or not client_id:
-            flash("Job number, name, and client are required.", "error")
-            return render_template("create_job.html")
+        # Optional: generate a job_number if empty
+        if not job_number:
+            job_number = _generate_next_job_number()
 
+        if not name or not client_id:
+            flash("Job name and client are required fields.", "error")
+            return render_template(
+                "create_job.html",
+                clients=_get_clients_for_user(),
+                sales_users=_get_sales_users_if_admin(),
+                entered_data=request.form,
+            )
+
+        # If admin, use assigned_user_id if provided, else default to the admin themselves
+        if role == "admin":
+            assigned_user_id = request.form.get("assigned_user_id")
+            if assigned_user_id:
+                # Make sure assigned_user_id is valid
+                assigned_user = User.query.filter_by(id=assigned_user_id).first()
+                if not assigned_user or assigned_user.role.name != "sales":
+                    flash("Invalid assigned user.", "error")
+                    return render_template(
+                        "create_job.html",
+                        clients=_get_clients_for_user(),
+                        sales_users=_get_sales_users_if_admin(),
+                        entered_data=request.form,
+                    )
+                final_assigned_user_id = assigned_user_id
+            else:
+                final_assigned_user_id = user_id
+        else:
+            final_assigned_user_id = user_id
+
+        # Verify the selected client is valid for the current user’s role
+        client = _get_client_if_allowed(client_id)
+        if not client:
+            flash(
+                "Invalid client or you don't have permission for this client.", "error"
+            )
+            return render_template(
+                "create_job.html",
+                clients=_get_clients_for_user(),
+                sales_users=_get_sales_users_if_admin(),
+                entered_data=request.form,
+            )
+
+        # Create new Job
         try:
-            # Create and save the new Job
-            job = Job(
+            new_job = Job(
                 job_number=job_number,
                 name=name,
-                client_id=int(client_id),
-                user_id=session["user_id"],
+                client_id=client.id,
+                user_id=final_assigned_user_id,  # <--- The assigned user
+                status=status,
                 description=description,
             )
-            db.session.add(job)
+            # If you have an installation_address field on Job:
+            new_job.installation_address = installation_address
+
+            db.session.add(new_job)
             db.session.commit()
-            flash("Job created successfully.", "success")
+            flash("Job created successfully!", "success")
             return redirect(url_for("dashboard"))
+
         except Exception as e:
             db.session.rollback()
-            flash("Error creating job: " + str(e), "error")
-            return render_template("create_job.html")
+            flash(f"Error creating job: {str(e)}", "error")
+            return render_template(
+                "create_job.html",
+                clients=_get_clients_for_user(),
+                sales_users=_get_sales_users_if_admin(),
+                entered_data=request.form,
+            )
+
     else:
-        # GET request: render the job creation form
-        return render_template("create_job.html")
+        # GET request
+        return render_template(
+            "create_job.html",
+            clients=_get_clients_for_user(),
+            sales_users=_get_sales_users_if_admin(),
+        )
 
 
-@app.route("/all-jobs")
-def all_jobs():
-    # Ensure the user is logged in
-    if "user_id" not in session:
-        flash("Please log in to view your jobs.", "error")
-        return redirect(url_for("login"))
+def _get_sales_users_if_admin():
+    """
+    Returns a list of sales users if current user is admin,
+    otherwise returns None or empty list.
+    """
+    role = session.get("role")
+    if role == "admin":
+        # Fetch all active users with the 'sales' role
+        sales_role = Role.query.filter_by(name="sales").first()
+        if not sales_role:
+            return []
+        return (
+            User.query.filter_by(role_id=sales_role.id, is_active=True)
+            .order_by(User.name.asc())
+            .all()
+        )
+    else:
+        return []
 
+
+def _get_clients_for_user():
+    """
+    Helper function to fetch relevant clients for the current user.
+    Admin sees all; sales sees only their own clients.
+    """
+    if "role" not in session or "user_id" not in session:
+        return []
+    user_role = session["role"]
     user_id = session["user_id"]
 
-    # Query all jobs for this user, ordering by most recently updated
-    jobs = Job.query.filter_by(user_id=user_id).order_by(Job.updated_at.desc()).all()
+    if user_role == "admin":
+        return Client.query.order_by(Client.name.asc()).all()
+    else:
+        return Client.query.filter_by(user_id=user_id).order_by(Client.name.asc()).all()
+
+
+def _get_client_if_allowed(client_id):
+    """
+    Returns the client if the user (sales) is authorized to use it,
+    or if the user is admin. Otherwise returns None.
+    """
+    if not client_id:
+        return None
+
+    user_role = session.get("role")
+    user_id = session.get("user_id")
+
+    client = Client.query.get(client_id)
+    if not client:
+        return None
+
+    if user_role == "admin":
+        return client
+
+    # For sales, client must belong to the same user
+    if client.user_id == user_id:
+        return client
+    return None
+
+
+def _generate_next_job_number():
+    """
+    Example logic to generate a new job_number like 'JOB-00001'
+    based on the highest existing ID or some other logic.
+    """
+    latest_job = Job.query.order_by(Job.id.desc()).first()
+    if latest_job:
+        # Extract the numeric part from the last job number, or just use ID
+        new_id = latest_job.id + 1
+        return f"JOB-{new_id:05d}"
+    else:
+        return "JOB-00001"
+
+
+@app.route("/all-jobs", methods=["GET"])
+def all_jobs():
+    """
+    Displays a list of jobs:
+      - Admin sees all jobs.
+      - Sales sees only their jobs.
+      - Supports optional search and status filtering.
+    """
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    user_id = session["user_id"]
+    user_role = session.get("role", "sales")  # default to 'sales' if not found
+
+    # Get query parameters for search and status filtering
+    search_query = request.args.get("q", "").strip().lower()
+    status_filter = request.args.get("status", "").strip().lower()  # e.g. "in_progress"
+
+    # 1) Base query
+    if user_role == "admin":
+        query = Job.query
+    else:
+        # Restrict to current user's jobs if not admin
+        query = Job.query.filter_by(user_id=user_id)
+
+    # 2) Optional status filter
+    if status_filter in ["pending", "in_progress", "completed", "cancelled"]:
+        query = query.filter_by(status=status_filter)
+
+    # 3) Optional search filter (search job name or job number)
+    if search_query:
+        # Simple example: filter by job_number or name, case-insensitive
+        query = query.filter(
+            db.or_(
+                func.lower(Job.job_number).contains(search_query),
+                func.lower(Job.name).contains(search_query),
+            )
+        )
+
+    # 4) Order by most recently updated
+    all_jobs = query.order_by(Job.updated_at.desc()).all()
 
     # Collect client IDs from the jobs to fetch their details
-    client_ids = [job.client_id for job in jobs]
+    client_ids = [job.client_id for job in all_jobs]
     clients = {
         client.id: client
         for client in Client.query.filter(Client.id.in_(client_ids)).all()
     }
 
-    # Format the job data for the template
+    # Build a final data structure for the template
     jobs_data = []
-    for job in jobs:
+    for job in all_jobs:
         client = clients.get(job.client_id)
         jobs_data.append(
             {
@@ -1075,6 +1241,7 @@ def all_jobs():
                 "client_id": client.id if client else None,
                 "client_name": client.name if client else "Unknown",
                 "client_phone": client.phone if client else None,
+                # If you have these properties in your Job model
                 "site_confirmation": job.site_confirmation_status,
                 "pre_installation": job.pre_installation_status,
                 "post_installation": job.post_installation_status,
@@ -1083,32 +1250,78 @@ def all_jobs():
             }
         )
 
-    # Render the 'all_jobs.html' template with the list of jobs
-    return render_template("all_jobs.html", jobs=jobs_data)
+    return render_template(
+        "all_jobs.html",
+        jobs=jobs_data,
+        search_query=search_query,
+        status_filter=status_filter,
+        user_role=user_role,
+    )
 
 
 @app.route("/edit-job/<int:job_id>", methods=["GET", "POST"])
 def edit_job(job_id):
-    # Ensure the user is logged in
     if "user_id" not in session:
         flash("Please log in to edit the job.", "error")
-        return redirect(url_for("login"))
+        return redirect(url_for("index"))
 
-    # Fetch the job owned by the logged-in user
-    job = Job.query.filter_by(id=job_id, user_id=session["user_id"]).first()
-    if not job:
-        flash("Job not found or access denied.", "error")
-        return redirect(url_for("dashboard"))
+    user_id = session["user_id"]
+    role = session.get("role", "sales")
+
+    # If admin, can edit any job; if sales, only their own
+    if role == "admin":
+        job = Job.query.get_or_404(job_id)
+    else:
+        job = Job.query.filter_by(id=job_id, user_id=user_id).first()
+        if not job:
+            flash("Job not found or access denied.", "error")
+            return redirect(url_for("dashboard"))
 
     if request.method == "POST":
-        # Update job details from the form
-        job.job_number = request.form.get("job_number")
-        job.name = request.form.get("name")
-        job.description = request.form.get("description")
-        # Assuming client_id is editable via the form
+        job_number = request.form.get("job_number", "").strip()
+        name = request.form.get("name", "").strip()
+        status = request.form.get("status", "pending").strip()
         client_id = request.form.get("client_id")
+        installation_address = request.form.get("installation_address", "").strip()
+        description = request.form.get("description", "").strip()
+
+        if not name:
+            flash("Job name is required.", "error")
+            return redirect(url_for("edit_job", job_id=job_id))
+
+        # Update job fields
+        job.job_number = job_number
+        job.name = name
+        job.status = status
+        job.description = description
+        job.installation_address = installation_address
+
+        # If changing the client
         if client_id:
-            job.client_id = int(client_id)
+            if role == "admin":
+                job.client_id = int(client_id)
+            else:
+                # Ensure this client belongs to the user
+                valid_client = Client.query.filter_by(
+                    id=client_id, user_id=user_id
+                ).first()
+                if not valid_client:
+                    flash("Invalid client or access denied.", "error")
+                    return redirect(url_for("edit_job", job_id=job_id))
+                job.client_id = int(client_id)
+
+        # If admin, check if they assigned to another user
+        if role == "admin":
+            assigned_user_id = request.form.get("assigned_user_id")
+            if assigned_user_id:
+                # Validate that user
+                assigned_user = User.query.filter_by(id=assigned_user_id).first()
+                if assigned_user and assigned_user.role.name == "sales":
+                    job.user_id = assigned_user.id
+                else:
+                    flash("Invalid assigned user.", "error")
+                    return redirect(url_for("edit_job", job_id=job_id))
+
         try:
             db.session.commit()
             flash("Job updated successfully.", "success")
@@ -1116,8 +1329,26 @@ def edit_job(job_id):
         except Exception as e:
             db.session.rollback()
             flash("Error updating job: " + str(e), "error")
-    # Render the edit job form template
-    return render_template("edit_job.html", job=job)
+            return redirect(url_for("edit_job", job_id=job_id))
+
+    # On GET request
+    if role == "admin":
+        clients_list = Client.query.order_by(Client.name.asc()).all()
+        sales_users = (
+            User.query.join(Role)
+            .filter(Role.name == "sales", User.is_active == True)
+            .order_by(User.name.asc())
+            .all()
+        )
+    else:
+        clients_list = (
+            Client.query.filter_by(user_id=user_id).order_by(Client.name.asc()).all()
+        )
+        sales_users = []  # Non-admin can't assign
+
+    return render_template(
+        "edit_job.html", job=job, clients=clients_list, sales_users=sales_users
+    )
 
 
 @app.route("/view-job/<int:job_id>")

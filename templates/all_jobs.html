@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+  <h1>All Jobs</h1>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-messages">
+        {% for category, message in messages %}
+          <div class="flash-message {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Search and Filter Form -->
+  <form method="GET" action="{{ url_for('all_jobs') }}" class="mb-3" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+    <!-- Search box -->
+    <div>
+      <label for="searchBox" class="form-label">Search by Job # or Name</label>
+      <input
+        type="text"
+        id="searchBox"
+        name="q"
+        class="form-control"
+        placeholder="e.g. JOB-00012, Window Replacement"
+        value="{{ search_query|default('', true) }}"
+        style="min-width: 250px;"
+      />
+    </div>
+
+    <!-- Status filter -->
+    <div>
+      <label for="statusSelect" class="form-label">Filter by Status</label>
+      <select
+        name="status"
+        id="statusSelect"
+        class="form-select"
+        style="min-width: 180px;"
+      >
+        <option value="">-- All Statuses --</option>
+        <option value="pending"
+          {% if status_filter == "pending" %}selected{% endif %}
+        >Pending</option>
+        <option value="in_progress"
+          {% if status_filter == "in_progress" %}selected{% endif %}
+        >In Progress</option>
+        <option value="completed"
+          {% if status_filter == "completed" %}selected{% endif %}
+        >Completed</option>
+        <option value="cancelled"
+          {% if status_filter == "cancelled" %}selected{% endif %}
+        >Cancelled</option>
+      </select>
+    </div>
+
+    <div class="align-self-end" style="display: flex; gap: 0.5rem;">
+      <button class="btn btn-primary" type="submit">
+        <i class="fas fa-search"></i> Search
+      </button>
+      <!-- Link to create a new job if the user can do so -->
+      <a href="{{ url_for('create_job') }}" class="btn btn-success">
+        <i class="fas fa-plus"></i> New Job
+      </a>
+    </div>
+  </form>
+
+  <!-- Jobs Table -->
+  <div class="table-responsive">
+    <table class="table table-striped align-middle" style="min-width: 900px;">
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th>Job Number</th>
+          <th>Job Name</th>
+          <th>Status</th>
+          <th style="width: 220px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if jobs %}
+          {% for job in jobs %}
+          <tr data-job-id="{{ job.job_id }}">
+            <td>
+              {{ job.client_name }}
+              {% if job.client_phone %}
+                <br><small class="text-muted">{{ job.client_phone }}</small>
+              {% endif %}
+            </td>
+            <td>{{ job.job_number }}</td>
+            <td>{{ job.name }}</td>
+            <td>
+              <!-- job.status is your main job status field -->
+              <span class="badge bg-info text-dark">
+                {{ job.status|title }}
+              </span>
+            </td>
+            <td>
+              <div class="d-flex flex-wrap" style="gap: 0.5rem;">
+                <!-- View Job link -->
+                <a href="{{ url_for('view_job', job_id=job.job_id) }}" class="btn btn-sm btn-secondary">
+                  <i class="fas fa-eye"></i> View
+                </a>
+                <!-- Edit job link (if user can edit) -->
+                <a href="{{ url_for('edit_job', job_id=job.job_id) }}" class="btn btn-sm btn-primary">
+                  <i class="fas fa-edit"></i> Edit
+                </a>
+                <!-- Delete button calls AJAX fetch to /api/delete-job/<job_id> -->
+                <button 
+                  type="button" 
+                  class="btn btn-sm btn-danger delete-job-btn"
+                  data-job-id="{{ job.job_id }}"
+                >
+                  <i class="fas fa-trash"></i> Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="5" class="text-center py-4">
+              <em>No jobs found.</em>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- JavaScript: handle delete via AJAX -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const deleteButtons = document.querySelectorAll('.delete-job-btn');
+  deleteButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const jobId = button.getAttribute('data-job-id');
+
+      // Prompt user for confirmation
+      if (!confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
+        return;
+      }
+
+      // Send DELETE request via fetch
+      fetch('/api/delete-job/' + jobId, {
+        method: 'DELETE'
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Remove the row from the table
+          const row = document.querySelector(`tr[data-job-id="${jobId}"]`);
+          if (row) {
+            row.remove();
+          }
+          // Optionally show an alert or flash message
+          alert('Job deleted successfully!');
+        } else {
+          alert('Error deleting job: ' + data.message);
+        }
+      })
+      .catch(error => {
+        alert('An error occurred while deleting the job: ' + error);
+      });
+    });
+  });
+});
+</script>
+
+{% endblock %}

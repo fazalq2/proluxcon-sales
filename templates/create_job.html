@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+  <h1>Create a New Job</h1>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-messages">
+        {% for category, message in messages %}
+          <div class="flash-message {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <form action="{{ url_for('create_job') }}" method="POST" style="max-width: 600px; margin: 0 auto;">
+
+    <!-- Job Number -->
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="job_number">Job Number</label>
+      <input type="text" id="job_number" name="job_number" class="form-control"
+             value="{{ entered_data.job_number if entered_data else '' }}"
+             placeholder="Optional - e.g. JOB-00001" />
+      <small class="text-muted">
+        Leave empty to auto-generate a job number.
+      </small>
+    </div>
+
+    <!-- Job Name -->
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="name">Job Name <span style="color: red;">*</span></label>
+      <input type="text" id="name" name="name" class="form-control" required
+             value="{{ entered_data.name if entered_data else '' }}"
+             placeholder="Enter a descriptive name for the job" />
+    </div>
+
+    <!-- Job Status -->
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="status">Job Status</label>
+      <select id="status" name="status" class="form-control">
+        <option value="pending"
+          {% if entered_data and entered_data.status == 'pending' %} selected {% endif %}>
+          Pending
+        </option>
+        <option value="in_progress"
+          {% if entered_data and entered_data.status == 'in_progress' %} selected {% endif %}>
+          In Progress
+        </option>
+        <option value="completed"
+          {% if entered_data and entered_data.status == 'completed' %} selected {% endif %}>
+          Completed
+        </option>
+        <option value="cancelled"
+          {% if entered_data and entered_data.status == 'cancelled' %} selected {% endif %}>
+          Cancelled
+        </option>
+      </select>
+    </div>
+
+    <!-- Client Selection -->
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="client_id">Select Client <span style="color: red;">*</span></label>
+      <select id="client_id" name="client_id" class="form-control" required>
+        <option value="">-- Select a Client --</option>
+        {% for client in clients %}
+          <option value="{{ client.id }}"
+            {% if entered_data and entered_data.client_id == client.id|string %}selected{% endif %}
+          >
+            {{ client.name }}{% if client.phone %} ({{ client.phone }}){% endif %}
+          </option>
+        {% endfor %}
+      </select>
+      <small class="text-muted">
+        Don’t see the client you need?
+        <a href="{{ url_for('clients') }}">Create or manage clients</a>.
+      </small>
+    </div>
+
+    <!-- Only if admin: assigned user dropdown -->
+    {% if sales_users and sales_users|length > 0 %}
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="assigned_user_id">Assign to User (Admin only)</label>
+      <select id="assigned_user_id" name="assigned_user_id" class="form-control">
+        <option value="">-- Keep for Myself --</option>
+        {% for u in sales_users %}
+          <option value="{{ u.id }}"
+            {% if entered_data and entered_data.assigned_user_id == u.id|string %}selected{% endif %}
+          >
+            {{ u.name }} ({{ u.email }})
+          </option>
+        {% endfor %}
+      </select>
+      <small class="text-muted">
+        This job will appear under the assigned user's dashboard.
+      </small>
+    </div>
+    {% endif %}
+
+    <!-- Installation Address -->
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="installation_address">Installation Address</label>
+      <textarea id="installation_address" name="installation_address"
+                class="form-control" rows="2"
+                placeholder="e.g. 123 Main St, Springfield, FL 33000"
+      >{{ entered_data.installation_address if entered_data else '' }}</textarea>
+    </div>
+
+    <!-- Description -->
+    <div class="form-group" style="margin-bottom: 1.5rem;">
+      <label for="description">Description / Notes</label>
+      <textarea id="description" name="description" class="form-control" rows="4"
+                placeholder="Any additional information about the job..."
+      >{{ entered_data.description if entered_data else '' }}</textarea>
+    </div>
+
+    <!-- Submit / Cancel -->
+    <button type="submit" class="btn btn-primary">Create Job</button>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+  </form>
+</div>
+
+{% endblock %}
