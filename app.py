@@ -438,6 +438,266 @@ class Report(db.Model):
         self.job_id = job_id
 
 
+class SiteConfirmation(db.Model):
+    """Stores information related to site confirmation for a job."""
+
+    __tablename__ = "site_confirmation"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # One-to-One with Job
+    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False, unique=True)
+    job = db.relationship("Job", backref=db.backref("site_confirmation", uselist=False))
+
+    # Status tracking
+    is_completed = db.Column(db.Boolean, default=False)
+    completed_at = db.Column(db.DateTime)
+    completed_by_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    completed_by = db.relationship("User", backref="completed_site_confirmations")
+
+    # Document section tracking
+    has_floor_plan = db.Column(db.Boolean, default=False)
+    has_material_quote = db.Column(db.Boolean, default=False)
+    has_signed_agreement = db.Column(db.Boolean, default=False)
+    has_sales_checklist = db.Column(db.Boolean, default=False)
+
+    # For combined document uploads
+    has_combined_document = db.Column(db.Boolean, default=False)
+    combined_document_notes = db.Column(db.Text)  # To store page number notes
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Additional notes
+    notes = db.Column(db.Text)
+
+    def __init__(self, job_id, notes=None):
+        self.job_id = job_id
+        self.notes = notes
+
+    def mark_completed(self, user_id):
+        """Mark the site confirmation as completed by a specific user."""
+        self.is_completed = True
+        self.completed_at = datetime.utcnow()
+        self.completed_by_id = user_id
+
+        # Also update the corresponding JobStatus entry
+        job_status = JobStatus.query.filter_by(
+            job_id=self.job_id, stage="site_confirmation"
+        ).first()
+        if job_status:
+            job_status.status = "complete"
+            job_status.completed_at = datetime.utcnow()
+            job_status.completed_by_id = user_id
+            job_status.notes = "Completed through site confirmation form"
+        else:
+            # Create a new job status if one doesn't exist
+            new_status = JobStatus(
+                job_id=self.job_id,
+                stage="site_confirmation",
+                status="complete",
+                notes="Completed through site confirmation form",
+            )
+            db.session.add(new_status)
+
+
+class SiteConfirmationDocument(db.Model):
+    """Tracks documents specifically for site confirmation purposes."""
+
+    __tablename__ = "site_confirmation_document"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Link to the site confirmation
+    site_confirmation_id = db.Column(
+        db.Integer, db.ForeignKey("site_confirmation.id"), nullable=False
+    )
+    site_confirmation = db.relationship("SiteConfirmation", backref="documents")
+
+    # Link to the job document (which stores the actual file)
+    job_document_id = db.Column(
+        db.Integer, db.ForeignKey("job_document.id"), nullable=False
+    )
+    job_document = db.relationship("JobDocument")
+
+    # Document type/category
+    document_type = db.Column(
+        db.String(50), nullable=False
+    )  # 'floor_plan', 'material_quote', 'signed_agreement', 'sales_checklist', 'combined', 'additional'
+
+    # For combined documents, track page numbers
+    page_range = db.Column(db.String(50))  # e.g., "1-3" for pages 1 through 3
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __init__(
+        self, site_confirmation_id, job_document_id, document_type, page_range=None
+    ):
+        self.site_confirmation_id = site_confirmation_id
+        self.job_document_id = job_document_id
+        self.document_type = document_type
+        self.page_range = page_range
+
+
+class PreInstallation(db.Model):
+    __tablename__ = "pre_installation"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # one‑to‑one with Job
+    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False, unique=True)
+    job = db.relationship("Job", backref=db.backref("pre_installation", uselist=False))
+
+    # basic workflow tracking
+    is_completed = db.Column(db.Boolean, default=False)
+    completed_at = db.Column(db.DateTime)
+    completed_by = db.Column(db.Integer, db.ForeignKey("user.id"))
+    notes = db.Column(db.Text)
+
+    # document flags  (add / remove as required)
+    has_custom_door_design = db.Column(db.Boolean, default=False)
+    has_mod_dap = db.Column(db.Boolean, default=False)
+    has_approved_proposal = db.Column(db.Boolean, default=False)
+    has_final_material_order = db.Column(db.Boolean, default=False)
+    has_final_permit_floor_plan = db.Column(db.Boolean, default=False)
+    has_job_site_photos = db.Column(db.Boolean, default=False)
+
+    # radio‑/checkbox style fields
+    door_option = db.Column(db.String(30))  # option1 / option2
+    casing_standard = db.Column(db.Boolean, default=False)
+    casing_special = db.Column(db.Boolean, default=False)
+
+    cleaning_dust = db.Column(db.Boolean, default=False)
+    cleaning_vacuum = db.Column(db.Boolean, default=False)
+    cleaning_mop = db.Column(db.Boolean, default=False)
+    cleaning_change_beds = db.Column(db.Boolean, default=False)
+    cleaning_windows = db.Column(db.Boolean, default=False)
+    cleaning_none = db.Column(db.Boolean, default=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    def mark_completed(self, user_id: int):
+        self.is_completed = True
+        self.completed_at = datetime.utcnow()
+        self.completed_by = user_id
+
+        # update JobStatus record
+        status = JobStatus.query.filter_by(
+            job_id=self.job_id, stage="pre_installation"
+        ).first()
+        if not status:
+            status = JobStatus(job_id=self.job_id, stage="pre_installation")
+            db.session.add(status)
+
+        status.status = "complete"
+        status.completed_at = self.completed_at
+        status.completed_by_id = user_id
+
+
+class PreInstallationDocument(db.Model):
+    """
+    Documents uploaded from the pre‑installation sheet.
+    """
+
+    __tablename__ = "pre_installation_document"
+
+    id = db.Column(db.Integer, primary_key=True)
+    pre_installation_id = db.Column(
+        db.Integer, db.ForeignKey("pre_installation.id"), nullable=False
+    )
+    pre_installation = db.relationship("PreInstallation", backref="documents")
+
+    job_document_id = db.Column(
+        db.Integer, db.ForeignKey("job_document.id"), nullable=False
+    )
+    job_document = db.relationship("JobDocument")
+
+    document_type = db.Column(db.String(50), nullable=False)  # custom_door_design …
+    page_range = db.Column(db.String(50))
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class PostInstallation(db.Model):
+    __tablename__ = "post_installation"
+
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False, unique=True)
+    job = db.relationship("Job", backref=db.backref("post_installation", uselist=False))
+
+    # Status tracking
+    is_completed = db.Column(db.Boolean, default=False)
+    completed_at = db.Column(db.DateTime)
+    completed_by = db.Column(db.Integer, db.ForeignKey("user.id"))
+
+    # Notes
+    notes = db.Column(db.Text)
+
+    # Additional fields as JSON
+    finish_items = db.Column(db.JSON)
+    labor_items = db.Column(db.JSON)
+    parts_items = db.Column(db.JSON)
+    permit_items = db.Column(db.JSON)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    def __init__(self, job_id, notes=None):
+        self.job_id = job_id
+        self.notes = notes
+        self.finish_items = []
+        self.labor_items = []
+        self.parts_items = []
+        self.permit_items = []
+
+    def mark_completed(self, user_id: int):
+        self.is_completed = True
+        self.completed_at = datetime.utcnow()
+        self.completed_by = user_id
+
+        # update JobStatus record
+        status = JobStatus.query.filter_by(
+            job_id=self.job_id, stage="post_installation"
+        ).first()
+        if not status:
+            status = JobStatus(job_id=self.job_id, stage="post_installation")
+            db.session.add(status)
+
+        status.status = "complete"
+        status.completed_at = self.completed_at
+        status.completed_by_id = user_id
+
+
+class PostInstallationDocument(db.Model):
+    """Documents uploaded from the post-installation sheet."""
+
+    __tablename__ = "post_installation_document"
+
+    id = db.Column(db.Integer, primary_key=True)
+    post_installation_id = db.Column(
+        db.Integer, db.ForeignKey("post_installation.id"), nullable=False
+    )
+    post_installation = db.relationship("PostInstallation", backref="documents")
+
+    job_document_id = db.Column(
+        db.Integer, db.ForeignKey("job_document.id"), nullable=False
+    )
+    job_document = db.relationship("JobDocument")
+
+    document_type = db.Column(
+        db.String(50), nullable=False
+    )  # permit_plan, final_invoice, etc.
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class Measurement(db.Model):
     """Represents an individual row in the 'Measure / Labor' table."""
 
@@ -1781,19 +2041,22 @@ def profile():
     return render_template("profile.html")
 
 
-@app.route("/site_confirmation")
-def site_confirmation():
-    return render_template("site_confirmation.html")
-
-
+# -----------------------------------------------------------
+#  Landing page – /pre_installation   (pick a job first)
+# -----------------------------------------------------------
 @app.route("/pre_installation")
-def pre_installation():
-    return render_template("pre_installation.html")
+def pre_installation_landing():
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
 
+    user_id = session["user_id"]
+    role = session.get("role")
 
-@app.route("/post_installation")
-def post_installation():
-    return render_template("post_installation.html")
+    jobs_query = Job.query if role == "admin" else Job.query.filter_by(user_id=user_id)
+    jobs = jobs_query.order_by(Job.updated_at.desc()).all()
+
+    return render_template("pre_installation_landing.html", jobs=jobs)
 
 
 @app.route("/measure_labor", methods=["GET"])
@@ -3492,6 +3755,733 @@ def view_job_document(document_id):
         return redirect(url_for("view_job", job_id=doc.job_id))
 
     return send_file(doc.file_path, mimetype=doc.mime_type)
+
+
+# -----------------------------------------------------------
+# Site Confirmation
+# -----------------------------------------------------------
+# ─────────────────────────────────────────────────────────────
+#  Site‑confirmation (landing page **and** job page)
+# ─────────────────────────────────────────────────────────────
+@app.route("/site_confirmation", defaults={"job_id": None}, methods=["GET"])
+@app.route("/job/<int:job_id>/site_confirmation", methods=["GET", "POST"])
+def site_confirmation(job_id):
+    """
+    1.  /site_confirmation
+        →  shows a list of jobs the user can choose from.
+    2.  /job/<job_id>/site_confirmation
+        →  shows the full site‑confirmation form for that job,
+           including document upload / deletion, completion, etc.
+    """
+    # ────────────────────────────
+    #  Authentication
+    # ────────────────────────────
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    user_id = session["user_id"]
+    user_role = session.get("role")
+
+    # ────────────────────────────
+    #  CASE A – landing page
+    # ────────────────────────────
+    if job_id is None:
+        # Admin sees all jobs; sales see only their own
+        if user_role == "admin":
+            available_jobs = Job.query.order_by(Job.updated_at.desc()).all()
+        else:
+            available_jobs = (
+                Job.query.filter_by(user_id=user_id)
+                .order_by(Job.updated_at.desc())
+                .all()
+            )
+
+        return render_template(
+            "site_confirmation_landing.html",
+            jobs=available_jobs,
+        )
+
+    # ────────────────────────────
+    #  CASE B – specific job page
+    # ────────────────────────────
+    # 1.  Access control
+    # ----------------------------------------------------------
+    job = Job.query.get_or_404(job_id)
+    if job.user_id != user_id and user_role != "admin":
+        flash("You don't have permission to access this job.", "error")
+        return redirect(url_for("dashboard"))
+
+    # 2.  Get or create the SiteConfirmation record
+    # ----------------------------------------------------------
+    site_confirmation = SiteConfirmation.query.filter_by(job_id=job_id).first()
+    if not site_confirmation:
+        site_confirmation = SiteConfirmation(job_id=job_id)
+        db.session.add(site_confirmation)
+        db.session.commit()
+
+    client = Client.query.get(job.client_id) if job.client_id else None
+
+    # Get job status
+    job_status = JobStatus.query.filter_by(
+        job_id=job_id, stage="site_confirmation"
+    ).first()
+    status = job_status.status if job_status else "incomplete"
+    is_completed = status == "complete"
+
+    # Check if edit mode is requested
+    edit_mode = request.args.get("edit", "false").lower() == "true"
+    # If not completed, always show edit mode
+    readonly = is_completed and not edit_mode
+
+    # helper to rebuild the `documents` dict
+    def _collect_documents():
+        docs = {
+            k: []
+            for k in (
+                "floor_plan",
+                "material_quote",
+                "signed_agreement",
+                "sales_checklist",
+                "combined",
+                "additional",
+            )
+        }
+        for sdoc in SiteConfirmationDocument.query.filter_by(
+            site_confirmation_id=site_confirmation.id
+        ).all():
+            jdoc = JobDocument.query.get(sdoc.job_document_id)
+            if jdoc:
+                docs[sdoc.document_type].append(
+                    {
+                        "id": sdoc.id,
+                        "job_document_id": jdoc.id,
+                        "filename": jdoc.filename,
+                        "uploaded_at": jdoc.uploaded_at,
+                        "page_range": sdoc.page_range,
+                    }
+                )
+        return docs
+
+    documents = _collect_documents()
+
+    # ────────────────────────────
+    #  Handle POST actions (upload, delete, complete …)
+    # ────────────────────────────
+    if request.method == "POST" and not readonly:
+        try:
+            action = request.form.get("action", "")
+
+            # ───── Upload a new document ─────
+            if action == "upload_document":
+                document_type = request.form.get("document_type")
+                file = request.files.get("document_file")
+                page_range = request.form.get("page_range", "")
+
+                if not file or not document_type:
+                    flash("Missing required fields for document upload.", "error")
+                    if edit_mode:
+                        return redirect(
+                            url_for("site_confirmation", job_id=job_id, edit=True)
+                        )
+                    return redirect(url_for("site_confirmation", job_id=job_id))
+
+                # secure & unique filename
+                original_name = secure_filename(file.filename)
+                if not original_name:
+                    flash("Invalid file name.", "error")
+                    if edit_mode:
+                        return redirect(
+                            url_for("site_confirmation", job_id=job_id, edit=True)
+                        )
+                    return redirect(url_for("site_confirmation", job_id=job_id))
+
+                unique_name = f"{datetime.utcnow():%Y%m%d%H%M%S}_{original_name}"
+                save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
+                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                file.save(save_path)
+
+                # JobDocument
+                job_doc = JobDocument(
+                    job_id=job_id,
+                    user_id=user_id,
+                    title=f"Site Confirmation - {document_type.replace('_',' ').title()}",
+                    filename=original_name,
+                    mime_type=file.content_type,
+                    file_path=save_path,
+                )
+                db.session.add(job_doc)
+                db.session.flush()  # so we have job_doc.id
+
+                # SiteConfirmationDocument
+                site_doc = SiteConfirmationDocument(
+                    site_confirmation_id=site_confirmation.id,
+                    job_document_id=job_doc.id,
+                    document_type=document_type,
+                    page_range=page_range or None,
+                )
+                db.session.add(site_doc)
+
+                # update flags
+                flag_map = {
+                    "floor_plan": "has_floor_plan",
+                    "material_quote": "has_material_quote",
+                    "signed_agreement": "has_signed_agreement",
+                    "sales_checklist": "has_sales_checklist",
+                    "combined": "has_combined_document",
+                }
+                if document_type in flag_map:
+                    setattr(site_confirmation, flag_map[document_type], True)
+                if document_type == "combined":
+                    site_confirmation.combined_document_notes = request.form.get(
+                        "combined_notes", ""
+                    )
+
+                db.session.commit()
+                flash("Document uploaded successfully!", "success")
+
+            # ───── Update notes for combined doc ─────
+            elif action == "update_combined_notes":
+                site_confirmation.combined_document_notes = request.form.get(
+                    "combined_notes", ""
+                )
+                db.session.commit()
+                flash("Combined document notes updated.", "success")
+
+            # ───── Save notes without completing ─────
+            elif action == "save_notes":
+                site_confirmation.notes = request.form.get("notes", "")
+                db.session.commit()
+                flash("Notes saved successfully.", "success")
+
+            # ───── Mark form complete ─────
+            elif action == "complete":
+                site_confirmation.notes = request.form.get("notes", "")
+                site_confirmation.mark_completed(user_id)
+                db.session.commit()
+                flash("Site confirmation completed successfully!", "success")
+                return redirect(url_for("view_job", job_id=job_id))
+
+            # ───── Delete a document ─────
+            elif action == "delete_document":
+                doc_id = request.form.get("document_id")
+                sdoc = SiteConfirmationDocument.query.get(doc_id) if doc_id else None
+                if not sdoc or sdoc.site_confirmation.job_id != job_id:
+                    flash("Document not found or access denied.", "error")
+                else:
+                    jdoc = JobDocument.query.get(sdoc.job_document_id)
+                    db.session.delete(sdoc)
+                    if jdoc:
+                        try:
+                            if os.path.exists(jdoc.file_path):
+                                os.remove(jdoc.file_path)
+                        except Exception as er:
+                            logger.error(f"File‑delete error: {er}")
+                        db.session.delete(jdoc)
+
+                    # refresh flags
+                    for flag, dtype in (
+                        ("has_floor_plan", "floor_plan"),
+                        ("has_material_quote", "material_quote"),
+                        ("has_signed_agreement", "signed_agreement"),
+                        ("has_sales_checklist", "sales_checklist"),
+                        ("has_combined_document", "combined"),
+                    ):
+                        remaining = SiteConfirmationDocument.query.filter_by(
+                            site_confirmation_id=site_confirmation.id,
+                            document_type=dtype,
+                        ).count()
+                        setattr(site_confirmation, flag, bool(remaining))
+
+                    if not site_confirmation.has_combined_document:
+                        site_confirmation.combined_document_notes = None
+
+                    db.session.commit()
+                    flash("Document deleted successfully.", "success")
+
+            else:
+                flash("Unknown action.", "error")
+
+        except Exception as e:
+            db.session.rollback()
+            logger.error("Site‑confirmation POST error", exc_info=True)
+            flash(f"Error: {e}", "error")
+
+        # refresh document list after any POST
+        documents = _collect_documents()
+
+        # Keep edit mode if we were in it
+        if edit_mode:
+            return redirect(url_for("site_confirmation", job_id=job_id, edit=True))
+        return redirect(url_for("site_confirmation", job_id=job_id))
+
+    # ────────────────────────────
+    #  Render page
+    # ────────────────────────────
+    return render_template(
+        "site_confirmation.html",
+        job=job,
+        client=client,
+        site_confirmation=site_confirmation,
+        documents=documents,
+        status=status,
+        is_completed=is_completed,
+        readonly=readonly,
+        edit_mode=edit_mode,
+    )
+
+
+@app.route("/post_installation", defaults={"job_id": None}, methods=["GET", "POST"])
+@app.route("/job/<int:job_id>/post_installation", methods=["GET", "POST"])
+def post_installation(job_id):
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    user_id = session["user_id"]
+
+    # If no job_id provided, show landing page with job selection
+    if job_id is None:
+        # Admin sees all jobs; sales see only their own
+        if session.get("role") == "admin":
+            available_jobs = Job.query.order_by(Job.updated_at.desc()).all()
+        else:
+            available_jobs = (
+                Job.query.filter_by(user_id=user_id)
+                .order_by(Job.updated_at.desc())
+                .all()
+            )
+
+        return render_template("post_installation_landing.html", jobs=available_jobs)
+
+    # If job_id provided, check permissions and get the job
+    job = Job.query.get_or_404(job_id)
+    if job.user_id != user_id and session.get("role") != "admin":
+        flash("You don't have permission to access this job.", "error")
+        return redirect(url_for("dashboard"))
+
+    # Get client information
+    client = Client.query.get(job.client_id) if job.client_id else None
+
+    # Get or create post-installation record
+    post_install = PostInstallation.query.filter_by(job_id=job_id).first()
+    if not post_install:
+        post_install = PostInstallation(job_id=job_id)
+        db.session.add(post_install)
+        db.session.commit()
+
+    # Get job status
+    job_status = JobStatus.query.filter_by(
+        job_id=job_id, stage="post_installation"
+    ).first()
+    status = job_status.status if job_status else "incomplete"
+    is_completed = status == "complete"
+
+    # Check if edit mode is requested
+    edit_mode = request.args.get("edit", "false").lower() == "true"
+    # If not completed, always show edit mode
+    readonly = is_completed and not edit_mode
+
+    # Helper to gather documents
+    def collect_documents():
+        docs = {"permit_plan": [], "final_invoice": [], "additional": []}
+        for doc in PostInstallationDocument.query.filter_by(
+            post_installation_id=post_install.id
+        ).all():
+            job_doc = JobDocument.query.get(doc.job_document_id)
+            if job_doc:
+                docs[doc.document_type].append(
+                    {
+                        "id": doc.id,
+                        "job_document_id": job_doc.id,
+                        "filename": job_doc.filename,
+                        "uploaded_at": job_doc.uploaded_at,
+                    }
+                )
+        return docs
+
+    documents = collect_documents()
+
+    # Process POST requests
+    if request.method == "POST":
+        action = request.form.get("action", "")
+
+        try:
+            # Handle document upload
+            if action == "upload_document":
+                document_type = request.form.get("document_type")
+                file = request.files.get("document_file")
+
+                if not file or not document_type:
+                    flash("Missing required fields for document upload.", "error")
+                    return redirect(url_for("post_installation", job_id=job_id))
+
+                # Secure and save the file
+                original_name = secure_filename(file.filename)
+                if not original_name:
+                    flash("Invalid file name.", "error")
+                    return redirect(url_for("post_installation", job_id=job_id))
+
+                unique_name = f"{datetime.utcnow():%Y%m%d%H%M%S}_{original_name}"
+                save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
+                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                file.save(save_path)
+
+                # Create job document
+                job_doc = JobDocument(
+                    job_id=job_id,
+                    user_id=user_id,
+                    title=f"Post-Installation - {document_type.replace('_', ' ').title()}",
+                    filename=original_name,
+                    mime_type=file.content_type,
+                    file_path=save_path,
+                )
+                db.session.add(job_doc)
+                db.session.flush()
+
+                # Create post-installation document
+                post_doc = PostInstallationDocument(
+                    post_installation_id=post_install.id,
+                    job_document_id=job_doc.id,
+                    document_type=document_type,
+                )
+                db.session.add(post_doc)
+                db.session.commit()
+
+                flash("Document uploaded successfully!", "success")
+
+            # Handle save notes
+            elif action == "save_notes":
+                post_install.notes = request.form.get("notes", "")
+                db.session.commit()
+                flash("Notes saved successfully!", "success")
+
+            # Handle complete
+            elif action == "complete":
+                # Save form data first
+                finish_items = request.form.getlist("finish_items[]")
+                labor_items = request.form.getlist("labor_items[]")
+                parts_items = request.form.getlist("parts_items[]")
+                permit_items = request.form.getlist("permit_items[]")
+
+                # Filter out empty items
+                post_install.finish_items = [
+                    item for item in finish_items if item.strip()
+                ]
+                post_install.labor_items = [
+                    item for item in labor_items if item.strip()
+                ]
+                post_install.parts_items = [
+                    item for item in parts_items if item.strip()
+                ]
+                post_install.permit_items = [
+                    item for item in permit_items if item.strip()
+                ]
+
+                # Save notes if provided
+                if request.form.get("notes"):
+                    post_install.notes = request.form.get("notes")
+
+                # Mark as completed
+                post_install.mark_completed(user_id)
+                db.session.commit()
+
+                flash("Post-installation completed successfully!", "success")
+                return redirect(url_for("view_job", job_id=job_id))
+
+            # Handle save without completing
+            elif action == "save":
+                # Save form data
+                finish_items = request.form.getlist("finish_items[]")
+                labor_items = request.form.getlist("labor_items[]")
+                parts_items = request.form.getlist("parts_items[]")
+                permit_items = request.form.getlist("permit_items[]")
+
+                # Filter out empty items
+                post_install.finish_items = [
+                    item for item in finish_items if item.strip()
+                ]
+                post_install.labor_items = [
+                    item for item in labor_items if item.strip()
+                ]
+                post_install.parts_items = [
+                    item for item in parts_items if item.strip()
+                ]
+                post_install.permit_items = [
+                    item for item in permit_items if item.strip()
+                ]
+
+                # Save notes if provided
+                if request.form.get("notes"):
+                    post_install.notes = request.form.get("notes")
+
+                db.session.commit()
+                flash("Changes saved successfully!", "success")
+
+                # Stay in edit mode if we were in edit mode
+                if edit_mode:
+                    return redirect(
+                        url_for("post_installation", job_id=job_id, edit=True)
+                    )
+                return redirect(url_for("post_installation", job_id=job_id))
+
+            # Refresh documents after any action
+            documents = collect_documents()
+
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Post-installation error: {str(e)}")
+            flash(f"Error: {str(e)}", "error")
+
+    # Render the template with all data
+    return render_template(
+        "post_installation.html",
+        job=job,
+        client=client,
+        post_install=post_install,
+        documents=documents,
+        status=status,
+        is_completed=is_completed,
+        readonly=readonly,
+        edit_mode=edit_mode,
+    )
+
+
+# -----------------------------------------------------------
+#  Main sheet – /job/<id>/pre_installation   (GET & POST)
+# -----------------------------------------------------------
+@app.route("/job/<int:job_id>/pre_installation", methods=["GET", "POST"])
+def pre_installation(job_id):
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    user_id = session["user_id"]
+    job = Job.query.get_or_404(job_id)
+
+    if job.user_id != user_id and session.get("role") != "admin":
+        flash("You don't have permission to access this job.", "error")
+        return redirect(url_for("dashboard"))
+
+    # Get or create pre-installation record
+    pi = PreInstallation.query.filter_by(job_id=job_id).first()
+    if not pi:
+        pi = PreInstallation(job_id=job_id)
+        db.session.add(pi)
+        db.session.commit()
+
+    # Get job status
+    job_status = JobStatus.query.filter_by(
+        job_id=job_id, stage="pre_installation"
+    ).first()
+    status = job_status.status if job_status else "incomplete"
+    is_completed = status == "complete"
+
+    # Check if edit mode is requested
+    edit_mode = request.args.get("edit", "false").lower() == "true"
+    # If not completed, always show edit mode
+    readonly = is_completed and not edit_mode
+
+    # Helper – gather documents by type for the template
+    def _collect_docs():
+        buckets = {
+            k: []
+            for k in [
+                "custom_door_design",
+                "mod_dap",
+                "approved_proposal",
+                "final_material_order",
+                "final_permit_floor_plan",
+                "job_site_photos",
+                "additional",
+            ]
+        }
+        for doc in PreInstallationDocument.query.filter_by(
+            pre_installation_id=pi.id
+        ).all():
+            jd = JobDocument.query.get(doc.job_document_id)
+            if jd:
+                buckets[doc.document_type].append(
+                    {
+                        "id": doc.id,
+                        "job_document_id": jd.id,
+                        "filename": jd.filename,
+                        "uploaded_at": jd.uploaded_at,
+                        "page_range": doc.page_range,
+                    }
+                )
+        return buckets
+
+    documents = _collect_docs()
+
+    # ------------------------------------------------------------------
+    # POST processing (upload, update, delete, complete)
+    # ------------------------------------------------------------------
+    if request.method == "POST" and not readonly:
+        action = request.form.get("action", "")
+
+        try:
+            # ------------------ 1) file upload -------------------------
+            if action == "upload_document":
+                document_type = request.form.get("document_type")
+                file = request.files.get("document_file")
+                page_range = request.form.get("page_range", "")
+
+                if not file or not document_type:
+                    flash("Missing file or type.", "error")
+                    return redirect(request.url)
+
+                original = secure_filename(file.filename)
+                if original == "":
+                    flash("Invalid filename.", "error")
+                    return redirect(request.url)
+
+                unique = f"{datetime.utcnow():%Y%m%d%H%M%S}_{original}"
+                path = os.path.join(app.config["UPLOAD_FOLDER"], unique)
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                file.save(path)
+
+                jd = JobDocument(
+                    job_id=job_id,
+                    user_id=user_id,
+                    title=f"Pre‑Install – {document_type.replace('_',' ').title()}",
+                    filename=original,
+                    mime_type=file.content_type,
+                    file_path=path,
+                )
+                db.session.add(jd)
+                db.session.flush()
+
+                pid = PreInstallationDocument(
+                    pre_installation_id=pi.id,
+                    job_document_id=jd.id,
+                    document_type=document_type,
+                    page_range=page_range or None,
+                )
+                db.session.add(pid)
+
+                # toggle flags
+                if document_type == "custom_door_design":
+                    pi.has_custom_door_design = True
+                elif document_type == "mod_dap":
+                    pi.has_mod_dap = True
+                elif document_type == "approved_proposal":
+                    pi.has_approved_proposal = True
+                elif document_type == "final_material_order":
+                    pi.has_final_material_order = True
+                elif document_type == "final_permit_floor_plan":
+                    pi.has_final_permit_floor_plan = True
+                elif document_type == "job_site_photos":
+                    pi.has_job_site_photos = True
+
+                db.session.commit()
+                flash("Document uploaded.", "success")
+
+                # Preserve edit mode if we were in it
+                if edit_mode:
+                    return redirect(
+                        url_for("pre_installation", job_id=job_id, edit=True)
+                    )
+                return redirect(request.url)
+
+            # ------------------ 2) save / continue (notes + options) ----
+            elif action == "save":
+                pi.notes = request.form.get("notes", "")
+                pi.door_option = request.form.get("door_option")
+
+                pi.casing_standard = bool(request.form.get("casing_standard"))
+                pi.casing_special = bool(request.form.get("casing_special"))
+
+                # cleaning
+                pi.cleaning_dust = bool(request.form.get("cleaning_dust"))
+                pi.cleaning_vacuum = bool(request.form.get("cleaning_vacuum"))
+                pi.cleaning_mop = bool(request.form.get("cleaning_mop"))
+                pi.cleaning_change_beds = bool(request.form.get("cleaning_change_beds"))
+                pi.cleaning_windows = bool(request.form.get("cleaning_windows"))
+                pi.cleaning_none = bool(request.form.get("cleaning_none"))
+
+                db.session.commit()
+                flash("Saved.", "success")
+
+                # Preserve edit mode if we were in it
+                if edit_mode:
+                    return redirect(
+                        url_for("pre_installation", job_id=job_id, edit=True)
+                    )
+                return redirect(request.url)
+
+            # ------------------ 3) mark complete ------------------------
+            elif action == "complete":
+                # First save all the form data
+                pi.notes = request.form.get("notes", "")
+                pi.door_option = request.form.get("door_option")
+                pi.casing_standard = bool(request.form.get("casing_standard"))
+                pi.casing_special = bool(request.form.get("casing_special"))
+                pi.cleaning_dust = bool(request.form.get("cleaning_dust"))
+                pi.cleaning_vacuum = bool(request.form.get("cleaning_vacuum"))
+                pi.cleaning_mop = bool(request.form.get("cleaning_mop"))
+                pi.cleaning_change_beds = bool(request.form.get("cleaning_change_beds"))
+                pi.cleaning_windows = bool(request.form.get("cleaning_windows"))
+                pi.cleaning_none = bool(request.form.get("cleaning_none"))
+
+                # Then mark as completed
+                pi.mark_completed(user_id)
+                db.session.commit()
+                flash("Pre‑installation completed!", "success")
+                return redirect(url_for("view_job", job_id=job_id))
+
+            # ------------------ 4) delete document ----------------------
+            elif action == "delete_document":
+                doc_id = request.form.get("document_id")
+                doc = PreInstallationDocument.query.get(doc_id) if doc_id else None
+                if not doc or doc.pre_installation_id != pi.id:
+                    flash("Doc not found.", "error")
+                else:
+                    jd = JobDocument.query.get(doc.job_document_id)
+                    if jd and os.path.exists(jd.file_path):
+                        os.remove(jd.file_path)
+                    if jd:
+                        db.session.delete(jd)
+                    db.session.delete(doc)
+                    db.session.commit()
+                    flash("Document deleted.", "success")
+
+                # Preserve edit mode if we were in it
+                if edit_mode:
+                    return redirect(
+                        url_for("pre_installation", job_id=job_id, edit=True)
+                    )
+                return redirect(request.url)
+
+        except Exception as ex:
+            db.session.rollback()
+            logger.error(f"Pre‑Install error: {ex}")
+            flash(str(ex), "error")
+
+            # Preserve edit mode if we were in it
+            if edit_mode:
+                return redirect(url_for("pre_installation", job_id=job_id, edit=True))
+            return redirect(request.url)
+
+        # refresh doc list after any POST
+        documents = _collect_docs()
+
+    # ------------------------------------------------------------------
+    # GET – render the sheet
+    # ------------------------------------------------------------------
+    client = Client.query.get(job.client_id) if job.client_id else None
+
+    return render_template(
+        "pre_installation.html",
+        job=job,
+        client=client,
+        pre_install=pi,
+        documents=documents,
+        status=status,
+        is_completed=is_completed,
+        readonly=readonly,
+        edit_mode=edit_mode,
+    )
 
 
 # -----------------------------------------------------------

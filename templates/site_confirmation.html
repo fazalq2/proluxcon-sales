@@ -1,68 +1,333 @@
 {% extends "base.html" %} {% block content %}
-<h1 class="page-title">Site Confirmation</h1>
+<h1 class="page-title">
+  {% if readonly %}View{% else %}Edit{% endif %} Site Confirmation - {{
+  job.job_number }}
+</h1>
+
+<div class="action-buttons" style="margin-bottom: 20px">
+  <a href="{{ url_for('site_confirmation') }}" class="btn">
+    <i class="fas fa-arrow-left"></i> Back to Jobs
+  </a>
+  <a href="{{ url_for('view_job', job_id=job.id) }}" class="btn">
+    <i class="fas fa-eye"></i> View Job
+  </a>
+
+  {% if is_completed and readonly %}
+  <a
+    href="{{ url_for('site_confirmation', job_id=job.id, edit=true) }}"
+    class="btn btn-primary"
+  >
+    <i class="fas fa-edit"></i> Edit
+  </a>
+  {% endif %}
+</div>
 
 <div class="card">
   <div class="card-header">
     <h2 class="card-title">Client Information</h2>
   </div>
-  <p><strong>Client Name:</strong> John Doe</p>
-  <p><strong>Job Name:</strong> Kitchen Renovation</p>
-  <p><strong>Job Address:</strong> 1234 Elm Street, Springfield</p>
+  <div class="card-body">
+    <p><strong>Client Name:</strong> {{ client.name if client else "N/A" }}</p>
+    <p><strong>Job Name:</strong> {{ job.name }}</p>
+    <p>
+      <strong>Job Address:</strong> {{ job.address if job.address else "Not
+      specified" }}
+    </p>
+
+    {% if status == "complete" %}
+    <div class="alert alert-success">
+      <strong>Status:</strong> This site confirmation has been completed on {{
+      site_confirmation.completed_at|strftime('%Y-%m-%d %H:%M') if
+      site_confirmation.completed_at else "N/A" }}
+    </div>
+    {% else %}
+    <div class="alert alert-warning">
+      <strong>Status:</strong> This site confirmation is {{ status }}
+    </div>
+    {% endif %}
+  </div>
 </div>
 
 <div class="card">
   <div class="card-header">
     <h2 class="card-title">Upload Combined Sheet</h2>
   </div>
-  <p>If you have a single combined PDF for all sections, upload it here:</p>
-  <input type="file" accept=".pdf" />
-  <p style="margin-top: 1rem">
-    <label for="combined-pages">Mark Page Numbers for Each Section:</label>
-    <input
-      type="text"
-      id="combined-pages"
-      placeholder="e.g., Floor Plan pg 1, Material pg 2-3..."
-    />
-  </p>
+  <div class="card-body">
+    <p>If you have a single combined PDF for all sections, upload it here:</p>
+
+    {% if documents['combined'] %}
+    <div class="table-responsive">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>Filename</th>
+            <th>Uploaded</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for doc in documents['combined'] %}
+          <tr>
+            <td>{{ doc.filename }}</td>
+            <td>{{ doc.uploaded_at|strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>
+              <a
+                href="{{ url_for('download_job_document', document_id=doc.job_document_id) }}"
+                class="btn btn-sm btn-primary"
+              >
+                <i class="fas fa-download"></i> Download
+              </a>
+              {% if not readonly %}
+              <form method="POST" style="display: inline">
+                <input type="hidden" name="action" value="delete_document" />
+                <input type="hidden" name="document_id" value="{{ doc.id }}" />
+                <button
+                  type="submit"
+                  class="btn btn-sm btn-danger"
+                  onclick="return confirm('Are you sure you want to delete this document?')"
+                >
+                  <i class="fas fa-trash"></i> Delete
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if readonly %}
+    <div class="card bg-light mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Page Numbers for Each Section:</h5>
+        <p class="card-text">
+          {{ site_confirmation.combined_document_notes or 'No page numbers
+          specified' }}
+        </p>
+      </div>
+    </div>
+    {% else %}
+    <form
+      method="POST"
+      action="{{ url_for('site_confirmation', job_id=job.id, edit=edit_mode) }}"
+    >
+      <input type="hidden" name="action" value="update_combined_notes" />
+      <div class="form-group">
+        <label for="combined-notes">Mark Page Numbers for Each Section:</label>
+        <input
+          type="text"
+          id="combined-notes"
+          name="combined_notes"
+          class="form-control"
+          value="{{ site_confirmation.combined_document_notes }}"
+          placeholder="e.g., Floor Plan pg 1, Material pg 2-3..."
+        />
+      </div>
+      <button type="submit" class="btn btn-sm btn-primary">
+        <i class="fas fa-save"></i> Update Notes
+      </button>
+    </form>
+    {% endif %} {% else %} {% if not readonly %}
+    <form
+      method="POST"
+      enctype="multipart/form-data"
+      action="{{ url_for('site_confirmation', job_id=job.id, edit=edit_mode) }}"
+    >
+      <input type="hidden" name="action" value="upload_document" />
+      <input type="hidden" name="document_type" value="combined" />
+
+      <div class="form-group">
+        <input
+          type="file"
+          name="document_file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="combined-notes">Mark Page Numbers for Each Section:</label>
+        <input
+          type="text"
+          id="combined-notes"
+          name="combined_notes"
+          class="form-control"
+          placeholder="e.g., Floor Plan pg 1, Material pg 2-3..."
+        />
+      </div>
+
+      <button type="submit" class="btn btn-sm btn-primary">
+        <i class="fas fa-upload"></i> Upload
+      </button>
+    </form>
+    {% else %}
+    <p class="text-muted">No combined document has been uploaded.</p>
+    {% endif %} {% endif %}
+  </div>
 </div>
 
+{% macro document_section(title, doc_type, documents) %}
 <div class="card">
   <div class="card-header">
-    <h2 class="card-title">Floor Plan</h2>
+    <h2 class="card-title">{{ title }}</h2>
   </div>
-  <p>Upload or add your Floor Plan document:</p>
-  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
+  <div class="card-body">
+    {% if documents[doc_type] %}
+    <div class="table-responsive">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>Filename</th>
+            <th>Uploaded</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for doc in documents[doc_type] %}
+          <tr>
+            <td>{{ doc.filename }}</td>
+            <td>{{ doc.uploaded_at|strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>
+              <a
+                href="{{ url_for('download_job_document', document_id=doc.job_document_id) }}"
+                class="btn btn-sm btn-primary"
+              >
+                <i class="fas fa-download"></i> Download
+              </a>
+              {% if not readonly %}
+              <form
+                method="POST"
+                style="display: inline"
+                action="{{ url_for('site_confirmation', job_id=job.id, edit=edit_mode) }}"
+              >
+                <input type="hidden" name="action" value="delete_document" />
+                <input type="hidden" name="document_id" value="{{ doc.id }}" />
+                <button
+                  type="submit"
+                  class="btn btn-sm btn-danger"
+                  onclick="return confirm('Are you sure you want to delete this document?')"
+                >
+                  <i class="fas fa-trash"></i> Delete
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted">No documents uploaded for this section.</p>
+    {% endif %} {% if not readonly %}
+    <form
+      method="POST"
+      enctype="multipart/form-data"
+      action="{{ url_for('site_confirmation', job_id=job.id, edit=edit_mode) }}"
+    >
+      <input type="hidden" name="action" value="upload_document" />
+      <input type="hidden" name="document_type" value="{{ doc_type }}" />
+
+      <div class="form-group">
+        <input type="file" name="document_file" accept=".pdf,.jpg,.jpeg,.png" />
+      </div>
+
+      <button type="submit" class="btn btn-sm btn-primary">
+        <i class="fas fa-upload"></i> Add/Upload
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %} {{ document_section('Floor Plan', 'floor_plan', documents) }} {{
+document_section('Material Quote (Priceless version)', 'material_quote',
+documents) }} {{ document_section('Signed Agreement', 'signed_agreement',
+documents) }} {{ document_section('Sales Checklist', 'sales_checklist',
+documents) }} {{ document_section('Additional Documents (Images/PDFs only)',
+'additional', documents) }}
+
+<div class="card mt-4">
+  <div class="card-header">
+    <h2 class="card-title">Notes</h2>
+  </div>
+  <div class="card-body">
+    {% if readonly %}
+    <div class="notes-content">
+      {{ site_confirmation.notes|replace('\n', '<br />')|safe or 'No notes
+      provided.' }}
+    </div>
+    {% else %}
+    <form
+      method="POST"
+      action="{{ url_for('site_confirmation', job_id=job.id, edit=edit_mode) }}"
+    >
+      <input type="hidden" name="action" value="save_notes" />
+
+      <div class="form-group">
+        <label for="notes">Additional Notes:</label>
+        <textarea id="notes" name="notes" class="form-control" rows="3">
+{{ site_confirmation.notes or '' }}</textarea
+        >
+      </div>
+
+      <button type="submit" class="btn btn-primary mt-2">
+        <i class="fas fa-save"></i> Save Notes
+      </button>
+    </form>
+    {% endif %}
+  </div>
 </div>
 
-<div class="card">
+{% if not readonly and status != "complete" %}
+<div class="card mt-4">
   <div class="card-header">
-    <h2 class="card-title">Material Quote (Priceless version)</h2>
+    <h2 class="card-title">Complete Site Confirmation</h2>
   </div>
-  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
-</div>
+  <div class="card-body">
+    <form
+      method="POST"
+      action="{{ url_for('site_confirmation', job_id=job.id, edit=edit_mode) }}"
+    >
+      <input type="hidden" name="action" value="complete" />
 
-<div class="card">
-  <div class="card-header">
-    <h2 class="card-title">Signed Agreement</h2>
-  </div>
-  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
-</div>
+      <div class="form-check mb-3">
+        <input
+          type="checkbox"
+          class="form-check-input"
+          id="confirm-complete"
+          required
+        />
+        <label class="form-check-label" for="confirm-complete">
+          I confirm that all required documents have been uploaded and the site
+          confirmation is complete
+        </label>
+      </div>
 
-<div class="card">
-  <div class="card-header">
-    <h2 class="card-title">Sales Checklist</h2>
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-check"></i> Mark Site Confirmation as Complete
+      </button>
+    </form>
   </div>
-  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
 </div>
-
-<div class="card">
-  <div class="card-header">
-    <h2 class="card-title">Additional Documents (Images/PDFs only)</h2>
-  </div>
-  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
-</div>
+{% endif %}
 
 <div style="margin-top: 1rem">
-  <button class="btn">Save & Continue</button>
+  <a href="{{ url_for('view_job', job_id=job.id) }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Back to Job
+  </a>
 </div>
+
+<style>
+  .action-buttons {
+    display: flex;
+    gap: 10px;
+  }
+  .notes-content {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    border-left: 3px solid #3498db;
+  }
+</style>
 {% endblock %}

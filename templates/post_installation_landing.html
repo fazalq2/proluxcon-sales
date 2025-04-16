@@ -1,0 +1,105 @@
+{% extends "base.html" %} {% block content %}
+<h1 class="page-title">Post-Installation</h1>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Select a Job</h2>
+  </div>
+  <div class="card-body">
+    <p>Please select a job to view or update its post-installation details:</p>
+
+    {% if jobs %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Job Number</th>
+            <th>Job Name</th>
+            <th>Client</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for job in jobs %}
+          <tr>
+            <td>{{ job.job_number }}</td>
+            <td>{{ job.name }}</td>
+            <td>
+              {% if job.client_id %} {{ job.client.name }} {% else %} No client
+              assigned {% endif %}
+            </td>
+            <td>
+              <span class="status-badge {{ job.status }}"
+                >{{ job.status|title }}</span
+              >
+            </td>
+            <td>
+              <a
+                href="{{ url_for('post_installation', job_id=job.id) }}"
+                class="btn btn-sm"
+              >
+                Select
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p>No jobs found. Please create a job first.</p>
+    <a href="{{ url_for('create_job') }}" class="btn">Create Job</a>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+  .status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: capitalize;
+  }
+  .status-badge.complete {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+  }
+  .status-badge.incomplete {
+    background: rgba(231, 76, 60, 0.15);
+    color: #e74c3c;
+  }
+  .status-badge.in_progress {
+    background: rgba(52, 152, 219, 0.15);
+    color: #3498db;
+  }
+  .status-badge.pending {
+    background: rgba(241, 196, 15, 0.15);
+    color: #f39c12;
+  }
+  .status-badge.completed {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+  }
+  .status-badge.cancelled {
+    background: rgba(189, 195, 199, 0.15);
+    color: #7f8c8d;
+  }
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .table th,
+  .table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
+  .table th {
+    background: #f5f5f5;
+    font-weight: 600;
+  }
+</style>
+{% endblock %}

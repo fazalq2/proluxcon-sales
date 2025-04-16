@@ -1,104 +1,480 @@
 {% extends "base.html" %} {% block content %}
 <h1 class="page-title">Post-Installation Sheet</h1>
 
-<div class="card">
-  <div class="card-header">
-    <h2 class="card-title">Client Information</h2>
-  </div>
-  <p><strong>Client Name:</strong> Mark Wilson</p>
-  <p><strong>Job Name:</strong> Garage Extension</p>
-  <p><strong>Job Address:</strong> 987 Pine Rd, Springfield</p>
+<div class="action-buttons" style="margin-bottom: 20px">
+  <a href="{{ url_for('post_installation') }}" class="btn">
+    <i class="fas fa-arrow-left"></i> Back to Jobs
+  </a>
+  <a href="{{ url_for('view_job', job_id=job.id) }}" class="btn">
+    <i class="fas fa-eye"></i> View Job
+  </a>
+
+  {% if is_completed and readonly %}
+  <a
+    href="{{ url_for('post_installation', job_id=job.id, edit=true) }}"
+    class="btn btn-primary"
+  >
+    <i class="fas fa-edit"></i> Edit
+  </a>
+  {% endif %}
 </div>
 
 <div class="card">
   <div class="card-header">
-    <h2 class="card-title">Finish</h2>
+    <h2 class="card-title">Job Information</h2>
   </div>
-  <div id="finish-list">
-    <input
-      type="text"
-      placeholder="Enter finish detail"
-      style="display: block; margin-bottom: 1rem"
-    />
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <p><strong>Job Number:</strong> {{ job.job_number }}</p>
+        <p><strong>Job Name:</strong> {{ job.name }}</p>
+        <p>
+          <strong>Status:</strong>
+          <span class="status-badge {{ job.status }}"
+            >{{ job.status|title }}</span
+          >
+        </p>
+      </div>
+      <div class="col-md-6">
+        <p>
+          <strong>Client:</strong>
+          {% if client %} {{ client.name }} {% if client.phone %} ({{
+          client.phone }}){% endif %} {% else %} No client assigned {% endif %}
+        </p>
+        <p>
+          <strong>Address:</strong> {{ job.address or "No address provided" }}
+        </p>
+      </div>
+    </div>
   </div>
-  <button class="btn btn-sm" onclick="addFinishLine()">
-    <i class="fas fa-plus"></i> Add Another
-  </button>
 </div>
 
 <div class="card">
   <div class="card-header">
-    <h2 class="card-title">Labor</h2>
+    <h2 class="card-title">Post-Installation Status</h2>
   </div>
-  <div id="labor-list">
-    <input
-      type="text"
-      placeholder="Enter labor detail"
-      style="display: block; margin-bottom: 1rem"
-    />
+  <div class="card-body">
+    <div class="status-display">
+      <p>
+        <strong>Current Status:</strong>
+        <span class="status-badge {{ status }}">{{ status|title }}</span>
+      </p>
+      {% if is_completed and post_install.completed_at %}
+      <p>
+        <strong>Completed On:</strong> {{
+        post_install.completed_at.strftime('%m/%d/%Y %I:%M %p') }}
+      </p>
+      {% endif %}
+    </div>
   </div>
-  <button class="btn btn-sm" onclick="addLaborLine()">
-    <i class="fas fa-plus"></i> Add Another
-  </button>
 </div>
 
+{% if readonly %}
+<!-- READ-ONLY VIEW -->
+<form id="view-form">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Finish</h2>
+    </div>
+    <div class="card-body">
+      {% if post_install.finish_items and post_install.finish_items|length > 0
+      %}
+      <ul class="list-group">
+        {% for item in post_install.finish_items %}
+        <li class="list-group-item">{{ item }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted">No finish items specified.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Labor</h2>
+    </div>
+    <div class="card-body">
+      {% if post_install.labor_items and post_install.labor_items|length > 0 %}
+      <ul class="list-group">
+        {% for item in post_install.labor_items %}
+        <li class="list-group-item">{{ item }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted">No labor items specified.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Parts</h2>
+    </div>
+    <div class="card-body">
+      {% if post_install.parts_items and post_install.parts_items|length > 0 %}
+      <ul class="list-group">
+        {% for item in post_install.parts_items %}
+        <li class="list-group-item">{{ item }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted">No parts items specified.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Permit</h2>
+    </div>
+    <div class="card-body">
+      {% if post_install.permit_items and post_install.permit_items|length > 0
+      %}
+      <ul class="list-group">
+        {% for item in post_install.permit_items %}
+        <li class="list-group-item">{{ item }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted">No permit items specified.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Notes</h2>
+    </div>
+    <div class="card-body">
+      {% if post_install.notes %}
+      <div class="notes-content">
+        {{ post_install.notes|replace('\n', '<br />')|safe }}
+      </div>
+      {% else %}
+      <p class="text-muted">No notes provided.</p>
+      {% endif %}
+    </div>
+  </div>
+</form>
+
+{% else %}
+<!-- EDITABLE VIEW -->
+<form
+  id="edit-form"
+  method="POST"
+  action="{{ url_for('post_installation', job_id=job.id, edit=edit_mode) }}"
+>
+  <input type="hidden" name="action" value="save" />
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Finish</h2>
+    </div>
+    <div class="card-body">
+      <div id="finish-list">
+        {% if post_install.finish_items and post_install.finish_items|length > 0
+        %} {% for item in post_install.finish_items %}
+        <input
+          type="text"
+          name="finish_items[]"
+          value="{{ item }}"
+          class="form-control"
+          style="margin-bottom: 1rem"
+        />
+        {% endfor %} {% else %}
+        <input
+          type="text"
+          name="finish_items[]"
+          placeholder="Enter finish detail"
+          class="form-control"
+          style="margin-bottom: 1rem"
+        />
+        {% endif %}
+      </div>
+      <button type="button" class="btn btn-sm" onclick="addFinishLine()">
+        <i class="fas fa-plus"></i> Add Another
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Labor</h2>
+    </div>
+    <div class="card-body">
+      <div id="labor-list">
+        {% if post_install.labor_items and post_install.labor_items|length > 0
+        %} {% for item in post_install.labor_items %}
+        <input
+          type="text"
+          name="labor_items[]"
+          value="{{ item }}"
+          class="form-control"
+          style="margin-bottom: 1rem"
+        />
+        {% endfor %} {% else %}
+        <input
+          type="text"
+          name="labor_items[]"
+          placeholder="Enter labor detail"
+          class="form-control"
+          style="margin-bottom: 1rem"
+        />
+        {% endif %}
+      </div>
+      <button type="button" class="btn btn-sm" onclick="addLaborLine()">
+        <i class="fas fa-plus"></i> Add Another
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Parts</h2>
+    </div>
+    <div class="card-body">
+      <div id="parts-list">
+        {% if post_install.parts_items and post_install.parts_items|length > 0
+        %} {% for item in post_install.parts_items %}
+        <input
+          type="text"
+          name="parts_items[]"
+          value="{{ item }}"
+          class="form-control"
+          style="margin-bottom: 1rem"
+        />
+        {% endfor %} {% else %}
+        <input
+          type="text"
+          name="parts_items[]"
+          placeholder="Enter part detail"
+          class="form-control"
+          style="margin-bottom: 1rem"
+        />
+        {% endif %}
+      </div>
+      <button type="button" class="btn btn-sm" onclick="addPartsLine()">
+        <i class="fas fa-plus"></i> Add Another
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Permit</h2>
+    </div>
+    <div class="card-body">
+      <div id="permit-list">
+        {% if post_install.permit_items and post_install.permit_items|length > 0
+        %} {% for item in post_install.permit_items %}
+        <input
+          type="text"
+          name="permit_items[]"
+          value="{{ item }}"
+          class="form-control"
+          style="margin-bottom: 1rem"
+        />
+        {% endfor %} {% else %}
+        <input
+          type="text"
+          name="permit_items[]"
+          placeholder="Enter permit detail"
+          class="form-control"
+          style="margin-bottom: 1rem"
+        />
+        {% endif %}
+      </div>
+      <button type="button" class="btn btn-sm" onclick="addPermitLine()">
+        <i class="fas fa-plus"></i> Add Another
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Notes</h2>
+    </div>
+    <div class="card-body">
+      <textarea
+        name="notes"
+        class="form-control"
+        rows="4"
+        placeholder="Enter additional notes here..."
+      >
+{{ post_install.notes or '' }}</textarea
+      >
+    </div>
+  </div>
+
+  <div style="margin-top: 1rem; text-align: center">
+    <button type="submit" class="btn btn-primary" name="action" value="save">
+      <i class="fas fa-save"></i> Save Changes
+    </button>
+    {% if not is_completed %}
+    <button
+      type="submit"
+      class="btn btn-success"
+      name="action"
+      value="complete"
+    >
+      <i class="fas fa-check-circle"></i> Save & Complete
+    </button>
+    {% endif %}
+  </div>
+</form>
+{% endif %}
+
+<!-- DOCUMENTS SECTION - Both read-only and editable views -->
 <div class="card">
   <div class="card-header">
-    <h2 class="card-title">Parts</h2>
+    <h2 class="card-title">Documents</h2>
   </div>
-  <div id="parts-list">
-    <input
-      type="text"
-      placeholder="Enter part detail"
-      style="display: block; margin-bottom: 1rem"
-    />
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <h3>Final Permit Floor Plan</h3>
+        <div id="permit-docs">
+          {% if documents['permit_plan'] %}
+          <ul class="list-group mb-3">
+            {% for doc in documents['permit_plan'] %}
+            <li
+              class="list-group-item d-flex justify-content-between align-items-center"
+            >
+              <span>{{ doc.filename }}</span>
+              <div>
+                <a
+                  href="{{ url_for('download_job_document', document_id=doc.job_document_id) }}"
+                  class="btn btn-sm btn-primary"
+                >
+                  <i class="fas fa-download"></i> Download
+                </a>
+                {% if not readonly %}
+                <form method="POST" style="display: inline-block">
+                  <input type="hidden" name="action" value="delete_document" />
+                  <input
+                    type="hidden"
+                    name="document_id"
+                    value="{{ doc.id }}"
+                  />
+                  <button
+                    type="submit"
+                    class="btn btn-sm btn-danger"
+                    onclick="return confirm('Delete this document?')"
+                  >
+                    <i class="fas fa-trash"></i> Delete
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p>No documents uploaded yet.</p>
+          {% endif %}
+        </div>
+        {% if not readonly %}
+        <form
+          method="POST"
+          enctype="multipart/form-data"
+          action="{{ url_for('post_installation', job_id=job.id, edit=edit_mode) }}"
+        >
+          <input type="hidden" name="action" value="upload_document" />
+          <input type="hidden" name="document_type" value="permit_plan" />
+          <div class="form-group">
+            <input
+              type="file"
+              name="document_file"
+              class="form-control"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-sm">
+            <i class="fas fa-upload"></i> Upload
+          </button>
+        </form>
+        {% endif %}
+      </div>
+
+      <div class="col-md-6">
+        <h3>Final Invoice</h3>
+        <div id="invoice-docs">
+          {% if documents['final_invoice'] %}
+          <ul class="list-group mb-3">
+            {% for doc in documents['final_invoice'] %}
+            <li
+              class="list-group-item d-flex justify-content-between align-items-center"
+            >
+              <span>{{ doc.filename }}</span>
+              <div>
+                <a
+                  href="{{ url_for('download_job_document', document_id=doc.job_document_id) }}"
+                  class="btn btn-sm btn-primary"
+                >
+                  <i class="fas fa-download"></i> Download
+                </a>
+                {% if not readonly %}
+                <form method="POST" style="display: inline-block">
+                  <input type="hidden" name="action" value="delete_document" />
+                  <input
+                    type="hidden"
+                    name="document_id"
+                    value="{{ doc.id }}"
+                  />
+                  <button
+                    type="submit"
+                    class="btn btn-sm btn-danger"
+                    onclick="return confirm('Delete this document?')"
+                  >
+                    <i class="fas fa-trash"></i> Delete
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p>No documents uploaded yet.</p>
+          {% endif %}
+        </div>
+        {% if not readonly %}
+        <form
+          method="POST"
+          enctype="multipart/form-data"
+          action="{{ url_for('post_installation', job_id=job.id, edit=edit_mode) }}"
+        >
+          <input type="hidden" name="action" value="upload_document" />
+          <input type="hidden" name="document_type" value="final_invoice" />
+          <div class="form-group">
+            <input
+              type="file"
+              name="document_file"
+              class="form-control"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-sm">
+            <i class="fas fa-upload"></i> Upload
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
   </div>
-  <button class="btn btn-sm" onclick="addPartsLine()">
-    <i class="fas fa-plus"></i> Add Another
-  </button>
 </div>
 
-<div class="card">
-  <div class="card-header">
-    <h2 class="card-title">Permit</h2>
-  </div>
-  <div id="permit-list">
-    <input
-      type="text"
-      placeholder="Enter permit detail"
-      style="display: block; margin-bottom: 1rem"
-    />
-  </div>
-  <button class="btn btn-sm" onclick="addPermitLine()">
-    <i class="fas fa-plus"></i> Add Another
-  </button>
-</div>
-
-<div class="card">
-  <div class="card-header">
-    <h2 class="card-title">Final Permit Floor Plan</h2>
-  </div>
-  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
-</div>
-
-<div class="card">
-  <div class="card-header">
-    <h2 class="card-title">Final Invoice</h2>
-  </div>
-  <button class="btn btn-sm"><i class="fas fa-upload"></i> Add/Upload</button>
-</div>
-
-<div style="margin-top: 1rem">
-  <button class="btn">Save & Complete</button>
-</div>
-
+{% if not readonly %}
 <script>
   function addFinishLine() {
     const finishList = document.getElementById("finish-list");
     const input = document.createElement("input");
     input.type = "text";
+    input.name = "finish_items[]";
     input.placeholder = "Enter finish detail";
-    input.style = "display:block; margin-bottom:1rem;";
+    input.className = "form-control";
+    input.style = "margin-bottom:1rem;";
     finishList.appendChild(input);
   }
 
@@ -106,8 +482,10 @@
     const laborList = document.getElementById("labor-list");
     const input = document.createElement("input");
     input.type = "text";
+    input.name = "labor_items[]";
     input.placeholder = "Enter labor detail";
-    input.style = "display:block; margin-bottom:1rem;";
+    input.className = "form-control";
+    input.style = "margin-bottom:1rem;";
     laborList.appendChild(input);
   }
 
@@ -115,8 +493,10 @@
     const partsList = document.getElementById("parts-list");
     const input = document.createElement("input");
     input.type = "text";
+    input.name = "parts_items[]";
     input.placeholder = "Enter part detail";
-    input.style = "display:block; margin-bottom:1rem;";
+    input.className = "form-control";
+    input.style = "margin-bottom:1rem;";
     partsList.appendChild(input);
   }
 
@@ -124,9 +504,71 @@
     const permitList = document.getElementById("permit-list");
     const input = document.createElement("input");
     input.type = "text";
+    input.name = "permit_items[]";
     input.placeholder = "Enter permit detail";
-    input.style = "display:block; margin-bottom:1rem;";
+    input.className = "form-control";
+    input.style = "margin-bottom:1rem;";
     permitList.appendChild(input);
   }
 </script>
+{% endif %}
+
+<style>
+  .action-buttons {
+    display: flex;
+    gap: 10px;
+  }
+  .status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: capitalize;
+  }
+  .status-badge.complete {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+  }
+  .status-badge.incomplete {
+    background: rgba(231, 76, 60, 0.15);
+    color: #e74c3c;
+  }
+  .status-badge.in_progress {
+    background: rgba(52, 152, 219, 0.15);
+    color: #3498db;
+  }
+  .status-badge.pending {
+    background: rgba(241, 196, 15, 0.15);
+    color: #f39c12;
+  }
+  .status-badge.completed {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+  }
+  .status-badge.cancelled {
+    background: rgba(189, 195, 199, 0.15);
+    color: #7f8c8d;
+  }
+  .form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  .card {
+    margin-bottom: 1.5rem;
+  }
+  .notes-content {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    border-left: 3px solid #3498db;
+  }
+  .list-group-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+</style>
 {% endblock %}

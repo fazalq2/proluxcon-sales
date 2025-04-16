@@ -14,11 +14,9 @@
   </a>
 </div>
 
-<!-- Job Details Card -->
+<!-- ───────────────────────── Job Details ─────────────────────────── -->
 <div class="card">
-  <div class="card-header">
-    <h2 class="card-title">Job Details</h2>
-  </div>
+  <div class="card-header"><h2 class="card-title">Job Details</h2></div>
   <div class="card-body">
     <div class="row">
       <div class="col-md-6">
@@ -41,9 +39,9 @@
       <div class="col-md-6">
         <p>
           <strong>Client:</strong>
-          {% if job.client_id %} {{ job.client.name }} {% if job.client.phone %}
-          (Phone: {{ job.client.phone }}){% endif %} {% else %} Not assigned {%
-          endif %}
+          {% if job.client_id %} {{ job.client.name }} {% if job.client.phone
+          %}(Phone: {{ job.client.phone }}){% endif %} {% else %} Not assigned
+          {% endif %}
         </p>
         <p>
           <strong>Description:</strong> {{ job.description or "No description
@@ -57,7 +55,7 @@
   </div>
 </div>
 
-<!-- Opportunity Data Card -->
+<!-- ─────────────────────── Opportunity Data ───────────────────────── -->
 {% if opportunity_data %}
 <div class="card" style="margin-top: 2rem">
   <div class="card-header">
@@ -67,48 +65,49 @@
     <div class="row">
       <div class="col-md-6">
         <p>
-          <strong>Lead Source:</strong> {{ opportunity_data.Source or 'Not
+          <strong>Lead Source:</strong> {{ opportunity_data['Source'] or 'Not
           specified' }}
         </p>
         <p>
-          <strong>Contact Type:</strong> {{ opportunity_data.Contact_Type or
+          <strong>Contact Type:</strong> {{ opportunity_data['Contact Type'] or
           'Not specified' }}
         </p>
         <p>
-          <strong>Pipeline Stage:</strong> {{ opportunity_data.Pipeline_Stage or
-          'Not specified' }}
+          <strong>Pipeline Stage:</strong> {{ opportunity_data['Pipeline Stage']
+          or 'Not specified' }}
         </p>
         <p>
-          <strong>Property Type:</strong> {{ opportunity_data.Property_Type or
-          'Not specified' }}
+          <strong>Property Type:</strong> {{ opportunity_data['Property Type']
+          or 'Not specified' }}
         </p>
-        <p><strong>Has HOA:</strong> {{ opportunity_data.Has_HOA }}</p>
-        {% if opportunity_data.Has_HOA == 'Yes' %}
-        <p><strong>HOA Name:</strong> {{ opportunity_data.HOA_Name }}</p>
+        <p><strong>Has HOA:</strong> {{ opportunity_data['Has HOA'] }}</p>
+        {% if opportunity_data['Has HOA'] == 'Yes' %}
+        <p><strong>HOA Name:</strong> {{ opportunity_data['HOA Name'] }}</p>
         {% endif %}
       </div>
       <div class="col-md-6">
         <p>
-          <strong>Timeframe:</strong> {{ opportunity_data.Timeframe or 'Not
+          <strong>Timeframe:</strong> {{ opportunity_data['Timeframe'] or 'Not
           specified' }}
         </p>
         <p>
-          <strong>Number of Windows:</strong> {{ opportunity_data.Windows or
+          <strong>Number of Windows:</strong> {{ opportunity_data['Windows'] or
           'Not specified' }}
         </p>
         <p>
-          <strong>Number of Doors:</strong> {{ opportunity_data.Doors or 'Not
+          <strong>Number of Doors:</strong> {{ opportunity_data['Doors'] or 'Not
           specified' }}
         </p>
         <p>
-          <strong>Service Types:</strong> {{ opportunity_data.Service_Types or
-          'Not specified' }}
+          <strong>Service Types:</strong> {{ opportunity_data['Service Types']
+          or 'Not specified' }}
         </p>
-        {% if opportunity_data.Roof_Type != 'None' %}
-        <p><strong>Roof Type:</strong> {{ opportunity_data.Roof_Type }}</p>
+        {% if opportunity_data['Roof Type'] != 'None' %}
+        <p><strong>Roof Type:</strong> {{ opportunity_data['Roof Type'] }}</p>
         {% endif %}
       </div>
     </div>
+
     {% if job.message %}
     <div class="row" style="margin-top: 1rem">
       <div class="col-md-12">
@@ -123,63 +122,96 @@
 </div>
 {% endif %}
 
-<!-- Installation Status Card -->
+<!-- ───────────────────── Installation Statuses ────────────────────── -->
 <div class="card" style="margin-top: 2rem">
-  <div class="card-header">
-    <h2 class="card-title">Installation Status</h2>
-  </div>
+  <div class="card-header"><h2 class="card-title">Installation Status</h2></div>
   <div class="card-body">
     <div class="row">
+      <!-- Site Confirmation -->
       <div class="col-md-4">
         <div class="installation-status">
           <h3>Site Confirmation</h3>
           <div class="status-badge {{ job.site_confirmation_status }}">
             {{ job.site_confirmation_status|title }}
           </div>
-          <a
-            href="{{ url_for('site_confirmation') }}?job_id={{ job.id }}"
-            class="btn btn-sm"
-            style="margin-top: 10px"
-          >
-            Update
-          </a>
+          <div style="margin-top: 10px">
+            <a
+              href="{{ url_for('site_confirmation', job_id=job.id) }}"
+              class="btn btn-sm"
+            >
+              {% if job.site_confirmation_status == 'complete' %}View{% else
+              %}Edit{% endif %}
+            </a>
+            {% if job.site_confirmation_status == 'complete' %}
+            <a
+              href="{{ url_for('site_confirmation', job_id=job.id, edit=true) }}"
+              class="btn btn-sm btn-primary"
+            >
+              Edit
+            </a>
+            {% endif %}
+          </div>
         </div>
       </div>
+
+      <!-- Pre‑Installation -->
       <div class="col-md-4">
         <div class="installation-status">
           <h3>Pre-Installation</h3>
           <div class="status-badge {{ job.pre_installation_status }}">
             {{ job.pre_installation_status|title }}
           </div>
-          <a
-            href="{{ url_for('pre_installation') }}?job_id={{ job.id }}"
-            class="btn btn-sm"
-            style="margin-top: 10px"
-          >
-            Update
-          </a>
+          <div style="margin-top: 10px">
+            <a
+              href="{{ url_for('pre_installation', job_id=job.id) }}"
+              class="btn btn-sm"
+            >
+              {% if job.pre_installation_status == 'complete' %}View{% else
+              %}Edit{% endif %}
+            </a>
+            {% if job.pre_installation_status == 'complete' %}
+            <a
+              href="{{ url_for('pre_installation', job_id=job.id, edit=true) }}"
+              class="btn btn-sm btn-primary"
+            >
+              Edit
+            </a>
+            {% endif %}
+          </div>
         </div>
       </div>
+
+      <!-- Post‑Installation -->
       <div class="col-md-4">
         <div class="installation-status">
           <h3>Post-Installation</h3>
           <div class="status-badge {{ job.post_installation_status }}">
             {{ job.post_installation_status|title }}
           </div>
-          <a
-            href="{{ url_for('post_installation') }}?job_id={{ job.id }}"
-            class="btn btn-sm"
-            style="margin-top: 10px"
-          >
-            Update
-          </a>
+          <div style="margin-top: 10px">
+            <a
+              href="{{ url_for('post_installation', job_id=job.id) }}"
+              class="btn btn-sm"
+            >
+              {% if job.post_installation_status == 'complete' %}View{% else
+              %}Edit{% endif %}
+            </a>
+            {% if job.post_installation_status == 'complete' %}
+            <a
+              href="{{ url_for('post_installation', job_id=job.id, edit=true) }}"
+              class="btn btn-sm btn-primary"
+            >
+              Edit
+            </a>
+            {% endif %}
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Window Lead Checklist Section -->
+<!-- ─────────────────── Window Lead Checklist ─────────────────────── -->
 <div class="card" style="margin-top: 2rem">
   <div class="card-header">
     <h2 class="card-title">Window Lead Checklist</h2>
@@ -187,8 +219,8 @@
   <div class="card-body">
     <p>
       Create or edit the Window Lead Checklist for this job. You can also
-      generate a pre-filled PDF to print out, have it signed, then scan and
-      re-upload the signed copy.
+      generate a pre‑filled PDF to print out, have it signed, then scan and
+      re‑upload the signed copy.
     </p>
     <div class="action-buttons">
       <a
@@ -207,11 +239,11 @@
   </div>
 </div>
 
-<!-- Reports Section -->
+<!-- ─────────────────────────── Reports ────────────────────────────── -->
 <div class="card" style="margin-top: 2rem">
   <div class="card-header">
     <h2 class="card-title">Reports</h2>
-    <a href="/create-report/{{ job.id }}" class="btn btn-sm">
+    <a href="{{ url_for('create_report', job_id=job.id) }}" class="btn btn-sm">
       <i class="fas fa-plus"></i> Create Report
     </a>
   </div>
@@ -232,7 +264,11 @@
             <td>{{ report.id }}</td>
             <td>{{ report.created_at.strftime('%m/%d/%Y %I:%M %p') }}</td>
             <td>
-              <a href="/view_report/{{ report.id }}" class="btn btn-sm">View</a>
+              <a
+                href="{{ url_for('view_report', report_id=report.id) }}"
+                class="btn btn-sm"
+                >View</a
+              >
             </td>
           </tr>
           {% endfor %}
@@ -240,42 +276,40 @@
       </table>
     </div>
     <div class="text-center" style="margin-top: 1rem">
-      <a href="/job_reports/{{ job.id }}" class="btn">View All Reports</a>
+      <a href="{{ url_for('job_reports', job_id=job.id) }}" class="btn"
+        >View All Reports</a
+      >
     </div>
     {% else %}
     <p class="text-center">No reports found for this job.</p>
     <div class="text-center">
-      <a href="/create-report/{{ job.id }}" class="btn">Create First Report</a>
+      <a href="{{ url_for('create_report', job_id=job.id) }}" class="btn"
+        >Create First Report</a
+      >
     </div>
     {% endif %}
   </div>
 </div>
 
-<!-- Job Documents Section -->
+<!-- ─────────────────────── Job Documents ─────────────────────────── -->
 <div class="card" style="margin-top: 2rem">
-  <div class="card-header">
-    <h2 class="card-title">Attached Documents</h2>
-  </div>
+  <div class="card-header"><h2 class="card-title">Attached Documents</h2></div>
   <div class="card-body">
     {% if job.documents and job.documents|length > 0 %}
     <ul>
       {% for doc in job.documents %}
       <li style="margin-bottom: 0.5rem">
-        <strong>{{ doc.title }}</strong> ({{ doc.filename }})
-        <br />
+        <strong>{{ doc.title }}</strong> ({{ doc.filename }})<br />
         <a
           href="{{ url_for('download_job_document', document_id=doc.id) }}"
           class="btn btn-sm btn-secondary"
+          >Download</a
         >
-          Download
-        </a>
-        <!-- If you have a route to view inline: -->
         <a
           href="{{ url_for('view_job_document', document_id=doc.id) }}"
           class="btn btn-sm btn-secondary"
+          >View</a
         >
-          View
-        </a>
       </li>
       {% endfor %}
     </ul>
@@ -283,7 +317,7 @@
     <p>No documents attached to this job yet.</p>
     {% endif %}
 
-    <!-- Upload Document Form -->
+    <!-- Upload form -->
     <form
       action="{{ url_for('upload_job_document', job_id=job.id) }}"
       method="POST"
@@ -315,7 +349,7 @@
   </div>
 </div>
 
-<!-- Update Job From Reports Button -->
+<!-- ─────────────── Update Job From Reports button ────────────────── -->
 <div style="margin-top: 2rem; text-align: center">
   <form
     action="{{ url_for('update_job_from_reports', job_id=job.id) }}"
@@ -327,12 +361,12 @@
   </form>
 </div>
 
+<!-- ─────────────────────────── Styles ─────────────────────────────── -->
 <style>
   .action-buttons {
     display: flex;
     gap: 10px;
   }
-
   .installation-status {
     background: #f9f9f9;
     padding: 20px;
@@ -341,8 +375,7 @@
     margin-bottom: 15px;
   }
   .installation-status h3 {
-    margin-top: 0;
-    margin-bottom: 10px;
+    margin: 0 0 10px;
     font-size: 1.2rem;
   }
   .status-badge {
@@ -378,7 +411,6 @@
     background: rgba(189, 195, 199, 0.15);
     color: #7f8c8d;
   }
-
   .table {
     width: 100%;
     border-collapse: collapse;
@@ -390,12 +422,11 @@
     border-bottom: 1px solid #eee;
   }
   .table th {
-    background-color: #f5f5f5;
+    background: #f5f5f5;
     font-weight: 600;
   }
-
   .message-box {
-    background-color: #f9f9f9;
+    background: #f9f9f9;
     border-radius: 5px;
     padding: 1rem;
     border-left: 4px solid #3498db;

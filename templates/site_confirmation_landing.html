@@ -1,0 +1,35 @@
+{% extends "base.html" %} {% block title %}Site‑Confirmation – pick a job{%
+endblock %} {% block content %}
+<h1 class="mb-4">Site‑Confirmation</h1>
+
+{% if jobs %}
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>Job #</th>
+      <th>Name</th>
+      <th>Updated</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for job in jobs %}
+    <tr>
+      <td>{{ job.job_number }}</td>
+      <td>{{ job.name }}</td>
+      <td>{{ job.updated_at.strftime("%Y‑%m‑%d") }}</td>
+      <td>
+        <a
+          class="btn btn-sm btn-primary"
+          href="{{ url_for('site_confirmation', job_id=job.id) }}"
+        >
+          open
+        </a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No jobs found that you can access.</p>
+{% endif %} {% endblock %}
