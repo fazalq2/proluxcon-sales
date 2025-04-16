@@ -16,6 +16,7 @@ from flask import make_response, send_file
 
 # PDF generation
 import pdfkit
+import tempfile
 
 # Excel generation
 import xlsxwriter
@@ -208,14 +209,59 @@ class Job(db.Model):
     user_id = db.Column(
         db.Integer, db.ForeignKey("user.id"), nullable=False
     )  # Created by / Owned by
-    user = db.relationship("User", backref="jobs")
 
-    # Relationship to Reports and JobStatus
+    # NEW FIELDS FOR STORING OPPORTUNITY DATA
+    opportunity_data = db.Column(
+        db.JSON, nullable=True
+    )  # Store all opportunity data as JSON
+    address = db.Column(db.String(255), nullable=True)  # From 'Job Address:'
+    service_types = db.Column(db.JSON, nullable=True)  # From 'What Services?'
+    timeframe = db.Column(
+        db.String(50), nullable=True
+    )  # From 'When Do You Need Service?'
+    property_type = db.Column(db.String(100), nullable=True)  # From 'Property Type'
+    hoa_status = db.Column(
+        db.String(10), nullable=True
+    )  # From 'Do you live in and HOA?'
+    hoa_name = db.Column(db.String(100), nullable=True)  # From 'HOA Name?'
+    opportunity_source = db.Column(db.String(100), nullable=True)  # From 'source'
+    contact_type = db.Column(db.String(50), nullable=True)  # From 'contact_type'
+    pipeline_stage = db.Column(db.String(100), nullable=True)  # From 'pipleline_stage'
+
+    # Additional detailed fields
+    num_windows = db.Column(db.Integer, nullable=True)  # From 'How many windows'
+    num_doors = db.Column(db.Integer, nullable=True)  # From 'How many doors'
+    roof_type = db.Column(db.JSON, nullable=True)  # From 'Roof type'
+    message = db.Column(db.Text, nullable=True)  # From 'Message'
+
+    # Relationships
+    user = db.relationship("User", backref="jobs")
     reports = db.relationship("Report", back_populates="job", lazy=True)
     job_statuses = db.relationship("JobStatus", backref="job", lazy=True)
+    documents = db.relationship("JobDocument", back_populates="job", lazy=True)
 
     def __init__(
-        self, job_number, name, client_id, user_id, description=None, status="pending"
+        self,
+        job_number,
+        name,
+        client_id,
+        user_id,
+        description=None,
+        status="pending",
+        opportunity_data=None,
+        address=None,
+        service_types=None,
+        timeframe=None,
+        property_type=None,
+        hoa_status=None,
+        hoa_name=None,
+        opportunity_source=None,
+        contact_type=None,
+        pipeline_stage=None,
+        num_windows=None,
+        num_doors=None,
+        roof_type=None,
+        message=None,
     ):
         self.job_number = job_number
         self.name = name
@@ -223,6 +269,24 @@ class Job(db.Model):
         self.user_id = user_id
         self.description = description
         self.status = status
+
+        # Initialize new opportunity fields
+        self.opportunity_data = opportunity_data or {}
+        self.address = address
+        self.service_types = service_types or []
+        self.timeframe = timeframe
+        self.property_type = property_type
+        self.hoa_status = hoa_status
+        self.hoa_name = hoa_name
+        self.opportunity_source = opportunity_source
+        self.contact_type = contact_type
+        self.pipeline_stage = pipeline_stage
+
+        # Initialize additional detailed fields
+        self.num_windows = num_windows
+        self.num_doors = num_doors
+        self.roof_type = roof_type or []
+        self.message = message
 
     @property
     def site_confirmation_status(self):
@@ -247,6 +311,19 @@ class Job(db.Model):
             job_id=self.id, stage="post_installation"
         ).first()
         return status.status if status else "incomplete"
+
+    @property
+    def services_summary(self):
+        """Returns a human-readable summary of services requested."""
+        if not self.service_types:
+            return "No services specified"
+
+        return ", ".join(self.service_types)
+
+    @property
+    def has_hoa(self):
+        """Returns True if property has HOA, False otherwise."""
+        return self.hoa_status == "YES"
 
 
 class JobStatus(db.Model):
@@ -289,6 +366,45 @@ class JobStatus(db.Model):
         self.notes = notes
         if status == "complete":
             self.completed_at = datetime.utcnow()
+
+
+class JobDocument(db.Model):
+    __tablename__ = "job_document"
+
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+
+    # Title or short name of the doc, e.g. "Signed Checklist", "HOA Approval Form"
+    title = db.Column(db.String(200), nullable=False)
+
+    # e.g. "application/pdf", "image/jpeg"
+    mime_type = db.Column(db.String(50), nullable=True)
+
+    # The filename as stored in your filesystem or DB
+    filename = db.Column(db.String(255), nullable=False)
+
+    # Optional: if you store the file in S3 or a local path
+    file_path = db.Column(db.String(500), nullable=True)
+
+    # Alternatively, if you store the raw binary in the DB:
+    # file_data = db.Column(db.LargeBinary)
+
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationship
+    job = db.relationship("Job", back_populates="documents")
+    user = db.relationship("User", backref="uploaded_documents")
+
+    def __init__(
+        self, job_id, user_id, title, filename, mime_type=None, file_path=None
+    ):
+        self.job_id = job_id
+        self.user_id = user_id
+        self.title = title
+        self.filename = filename
+        self.mime_type = mime_type
+        self.file_path = file_path
 
 
 class Report(db.Model):
@@ -1282,19 +1398,73 @@ def edit_job(job_id):
         name = request.form.get("name", "").strip()
         status = request.form.get("status", "pending").strip()
         client_id = request.form.get("client_id")
-        installation_address = request.form.get("installation_address", "").strip()
+        address = request.form.get("address", "").strip()
         description = request.form.get("description", "").strip()
+
+        # Get opportunity data from form
+        property_type = request.form.get("property_type", "").strip()
+        timeframe = request.form.get("timeframe", "").strip()
+        num_windows = request.form.get("num_windows")
+        num_doors = request.form.get("num_doors")
+        hoa_status = request.form.get("hoa_status", "").strip()
+        hoa_name = request.form.get("hoa_name", "").strip()
+        message = request.form.get("message", "").strip()
+        opportunity_source = request.form.get("opportunity_source", "").strip()
+        contact_type = request.form.get("contact_type", "").strip()
+        pipeline_stage = request.form.get("pipeline_stage", "").strip()
+
+        # Handle service_types and roof_type as multi-select or comma-separated values
+        service_types = request.form.getlist("service_types") or []
+        if not service_types and request.form.get("service_types_text"):
+            service_types = [
+                s.strip()
+                for s in request.form.get("service_types_text").split(",")
+                if s.strip()
+            ]
+
+        roof_type = request.form.getlist("roof_type") or []
+        if not roof_type and request.form.get("roof_type_text"):
+            roof_type = [
+                r.strip()
+                for r in request.form.get("roof_type_text").split(",")
+                if r.strip()
+            ]
 
         if not name:
             flash("Job name is required.", "error")
             return redirect(url_for("edit_job", job_id=job_id))
 
-        # Update job fields
+        # Update basic job fields
         job.job_number = job_number
         job.name = name
         job.status = status
         job.description = description
-        job.installation_address = installation_address
+        job.address = address
+
+        # Update opportunity data fields
+        job.property_type = property_type
+        job.timeframe = timeframe
+        job.hoa_status = hoa_status
+        job.hoa_name = hoa_name
+        job.message = message
+        job.opportunity_source = opportunity_source
+        job.contact_type = contact_type
+        job.pipeline_stage = pipeline_stage
+        job.service_types = service_types
+        job.roof_type = roof_type
+
+        # Update numeric fields with validation
+        try:
+            job.num_windows = (
+                int(num_windows) if num_windows and num_windows.strip() else None
+            )
+        except ValueError:
+            flash("Invalid value for number of windows.", "warning")
+
+        try:
+            job.num_doors = int(num_doors) if num_doors and num_doors.strip() else None
+        except ValueError:
+            flash("Invalid value for number of doors.", "warning")
 
         # If changing the client
         if client_id:
@@ -1325,7 +1495,7 @@ def edit_job(job_id):
         try:
             db.session.commit()
             flash("Job updated successfully.", "success")
-            return redirect(url_for("dashboard"))
+            return redirect(url_for("view_job", job_id=job_id))
         except Exception as e:
             db.session.rollback()
             flash("Error updating job: " + str(e), "error")
@@ -1346,8 +1516,36 @@ def edit_job(job_id):
         )
         sales_users = []  # Non-admin can't assign
 
+    # Prepare service types and property types for dropdowns
+    service_type_options = [
+        "Windows",
+        "Doors",
+        "Roof",
+        "Siding",
+        "Gutters",
+        "Solar",
+        "Other",
+    ]
+    property_type_options = [
+        "Single Family Home",
+        "Condo",
+        "Townhouse",
+        "Multi-Family",
+        "Commercial",
+        "Other",
+    ]
+    timeframe_options = ["ASAP", "1-3 Weeks", "1-2 Months", "3-6 Months", "6+ Months"]
+    roof_type_options = ["Asphalt", "Metal", "Tile", "Flat", "Wood", "Other"]
+
     return render_template(
-        "edit_job.html", job=job, clients=clients_list, sales_users=sales_users
+        "edit_job.html",
+        job=job,
+        clients=clients_list,
+        sales_users=sales_users,
+        service_type_options=service_type_options,
+        property_type_options=property_type_options,
+        timeframe_options=timeframe_options,
+        roof_type_options=roof_type_options,
     )
 
 
@@ -1375,8 +1573,46 @@ def view_job(job_id):
     # Optionally, fetch any reports
     reports = Report.query.filter_by(job_id=job_id).all()
 
-    # Render the view job details template
-    return render_template("view_job.html", job=job, reports=reports)
+    # Fetch all job statuses for this job
+    job_statuses = JobStatus.query.filter_by(job_id=job_id).all()
+    status_dict = {status.stage: status for status in job_statuses}
+
+    # Get job documents
+    documents = (
+        JobDocument.query.filter_by(job_id=job_id)
+        .order_by(JobDocument.uploaded_at.desc())
+        .all()
+    )
+
+    # Format opportunity data for display
+    opportunity_data = {}
+    if job.opportunity_data:
+        # Extract important fields for display
+        opportunity_data = {
+            "Source": job.opportunity_source,
+            "Contact Type": job.contact_type,
+            "Pipeline Stage": job.pipeline_stage,
+            "Property Type": job.property_type,
+            "Has HOA": "Yes" if job.has_hoa else "No",
+            "HOA Name": job.hoa_name if job.hoa_name else "N/A",
+            "Timeframe": job.timeframe,
+            "Windows": job.num_windows,
+            "Doors": job.num_doors,
+            "Service Types": (
+                ", ".join(job.service_types) if job.service_types else "None"
+            ),
+            "Roof Type": ", ".join(job.roof_type) if job.roof_type else "None",
+        }
+
+    # Render the view job details template with all job information
+    return render_template(
+        "view_job.html",
+        job=job,
+        reports=reports,
+        documents=documents,
+        status_dict=status_dict,
+        opportunity_data=opportunity_data,
+    )
 
 
 @app.route("/create-report/<int:job_id>", methods=["GET", "POST"])
@@ -1883,95 +2119,204 @@ def user_jobs_api():
 from sqlalchemy import func  # add this at the top if not already imported
 
 
+def extract_contact_info(data):
+    """Extract basic contact information from webhook data."""
+    name = (
+        data.get("full_name")
+        or f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
+    )
+    phone = data.get("phone")
+    email = data.get("email")
+    address = data.get("Job Address:", "")
+
+    return {"name": name, "phone": phone, "email": email, "address": address}
+
+
+def extract_job_info(data):
+    """Extract job related information from webhook data."""
+    job_info = {
+        # Basic job info
+        "job_name": data.get("opportunity_name", "New Job"),
+        "description": f"Pipeline: {data.get('pipeline_name', 'Unknown')}, Status: {data.get('status', 'N/A')}",
+        # Service details
+        "service_types": data.get("What Services?", []),
+        "timeframe": data.get("When Do You Need Service?", ""),
+        "property_type": data.get("Property Type", ""),
+        # HOA information
+        "hoa_status": data.get("Do you live in and HOA?", ""),
+        "hoa_name": data.get("HOA Name?", ""),
+        # Lead/opportunity metadata
+        "opportunity_source": data.get("source", ""),
+        "contact_type": data.get("contact_type", ""),
+        "pipeline_stage": data.get("pipleline_stage", ""),
+        # Additional details
+        "address": data.get("Job Address:", ""),
+        "num_windows": data.get("How many windows"),
+        "num_doors": data.get("How many doors"),
+        "roof_type": data.get("Roof type", []),
+        "message": data.get("Message", ""),
+    }
+
+    return job_info
+
+
+def get_or_create_user(data):
+    """Find existing user or create a new one if not found."""
+    # Assigned user email from GHL
+    assigned_user_email = data.get("user", {}).get("email")
+    if not assigned_user_email:
+        raise ValueError("Missing assigned user email")
+
+    assigned_user_email = assigned_user_email.lower()
+
+    # Case-insensitive email lookup
+    user = User.query.filter(func.lower(User.email) == assigned_user_email).first()
+
+    if not user:
+        logger.warning(f"Assigned user not found: {assigned_user_email}")
+        sales_role = Role.query.filter_by(name="sales").first()
+
+        if not sales_role:
+            logger.error("Sales role not found. Cannot assign role to new user.")
+            raise ValueError("Sales role not defined in system")
+
+        # Construct fallback name
+        first_name = data.get("user", {}).get("firstName", "")
+        last_name = data.get("user", {}).get("lastName", "")
+        generated_name = f"{first_name} {last_name}".strip() or assigned_user_email
+
+        # Auto-create an inactive user
+        user = User(
+            name=generated_name,
+            email=assigned_user_email,
+            password="Temp@1234",  # Placeholder (can later enforce reset)
+            role_id=sales_role.id,
+            is_active=False,
+            must_change_password=True,
+        )
+        db.session.add(user)
+        db.session.flush()
+        logger.info(f"Auto-created inactive user: {user.email}")
+
+    return user
+
+
+def create_client(contact_info, user_id):
+    """Create a client record with basic contact information."""
+    client = Client(
+        name=contact_info["name"],
+        phone=contact_info["phone"],
+        email=contact_info["email"],
+        address=contact_info["address"],
+        user_id=user_id,
+    )
+    db.session.add(client)
+    db.session.flush()
+    return client
+
+
+def generate_job_number():
+    """Generate the next sequential job number."""
+    latest_job = Job.query.order_by(Job.id.desc()).first()
+    return f"JOB-{latest_job.id + 1:05d}" if latest_job else "JOB-00001"
+
+
+def create_job(job_info, client_id, user_id, opportunity_data):
+    """Create a job with all opportunity data."""
+    job_number = generate_job_number()
+
+    # Create job with extended fields
+    job = Job(
+        job_number=job_number,
+        name=job_info["job_name"],
+        client_id=client_id,
+        user_id=user_id,
+        description=job_info["description"],
+        # Store opportunity data
+        opportunity_data=opportunity_data,
+        address=job_info["address"],
+        service_types=job_info["service_types"],
+        timeframe=job_info["timeframe"],
+        property_type=job_info["property_type"],
+        hoa_status=job_info["hoa_status"],
+        hoa_name=job_info["hoa_name"],
+        opportunity_source=job_info["opportunity_source"],
+        contact_type=job_info["contact_type"],
+        pipeline_stage=job_info["pipeline_stage"],
+        # Additional details
+        num_windows=job_info["num_windows"],
+        num_doors=job_info["num_doors"],
+        roof_type=job_info["roof_type"],
+        message=job_info["message"],
+    )
+    db.session.add(job)
+    db.session.flush()
+
+    # Create job status stages
+    for stage in ["site_confirmation", "pre_installation", "post_installation"]:
+        job_status = JobStatus(job_id=job.id, stage=stage, status="incomplete")
+        db.session.add(job_status)
+
+    return job
+
+
 @app.route("/webhook/opportunity", methods=["POST"])
 def receive_ghl_opportunity():
     try:
+        # Verify content type
+        if not request.is_json:
+            logger.warning("Request content-type is not application/json")
+            return jsonify({"error": "Expected JSON data"}), 400
+
+        # Get and log webhook data
         data = request.get_json()
         logger.info(f"Received GHL opportunity webhook data: {data}")
 
-        # Extract contact info
-        name = (
-            data.get("full_name")
-            or f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
-        )
-        phone = data.get("phone")
-        email = data.get("email")
-        job_name = data.get("opportunity_name", "New Job")
-        description = f"Pipeline: {data.get('pipeline_name', 'Unknown')}, Status: {data.get('status', 'N/A')}"
+        # Extract basic information
+        contact_info = extract_contact_info(data)
+        job_info = extract_job_info(data)
 
-        # Assigned user email from GHL
-        assigned_user_email = data.get("user", {}).get("email")
-        if assigned_user_email:
-            assigned_user_email = assigned_user_email.lower()
+        # Validate basic required data
+        if not contact_info["name"]:
+            logger.warning("Missing contact name")
+            return jsonify({"error": "Missing contact name"}), 400
 
-        if not name or not assigned_user_email:
-            logger.warning("Missing name or assigned_user_email")
-            return jsonify({"error": "Missing name or assigned_user_email"}), 400
+        # Process the data in transaction
+        try:
+            # Get or create user
+            user = get_or_create_user(data)
 
-        # Case-insensitive email lookup
-        user = User.query.filter(func.lower(User.email) == assigned_user_email).first()
+            # Create client
+            client = create_client(contact_info, user.id)
 
-        if not user:
-            logger.warning(f"Assigned user not found: {assigned_user_email}")
-            sales_role = Role.query.filter_by(name="sales").first()
+            # Create job with all opportunity data
+            job = create_job(job_info, client.id, user.id, data)
 
-            if not sales_role:
-                logger.error("Sales role not found. Cannot assign role to new user.")
-                return jsonify({"error": "Sales role not defined in system"}), 500
-
-            # Construct fallback name
-            first_name = data.get("user", {}).get("firstName", "")
-            last_name = data.get("user", {}).get("lastName", "")
-            generated_name = f"{first_name} {last_name}".strip() or assigned_user_email
-
-            # Auto-create an inactive user
-            user = User(
-                name=generated_name,
-                email=assigned_user_email,
-                password="Temp@1234",  # Placeholder (can later enforce reset)
-                role_id=sales_role.id,
-                is_active=True,
-                must_change_password=True,
+            # Commit transaction
+            db.session.commit()
+            logger.info(
+                f"Created client '{client.name}', job '{job.job_number}' assigned to '{user.email}'"
             )
-            user.is_active = False  # New field you must add to your User model
-            db.session.add(user)
-            db.session.flush()
-            logger.info(f"Auto-created inactive user: {user.email}")
 
-        # Create client
-        client = Client(name=name, phone=phone, email=email, user_id=user.id)
-        db.session.add(client)
-        db.session.flush()
-
-        # Generate next job number
-        latest_job = Job.query.order_by(Job.id.desc()).first()
-        next_job_number = f"JOB-{latest_job.id + 1:05d}" if latest_job else "JOB-00001"
-
-        # Create job
-        job = Job(
-            job_number=next_job_number,
-            name=job_name,
-            client_id=client.id,
-            user_id=user.id,
-            description=description,
-        )
-        db.session.add(job)
-        db.session.flush()
-
-        # Create 3 job status stages
-        for stage in ["site_confirmation", "pre_installation", "post_installation"]:
-            job_status = JobStatus(job_id=job.id, stage=stage, status="incomplete")
-            db.session.add(job_status)
-
-        db.session.commit()
-        logger.info(
-            f"Created client '{client.name}', job '{job.job_number}' assigned to '{user.email}'"
-        )
-
-        return (
-            jsonify({"message": "Client, job, and statuses created successfully"}),
-            200,
-        )
+            return (
+                jsonify(
+                    {
+                        "message": "Client, job, and statuses created successfully",
+                        "job_number": job.job_number,
+                        "client_id": client.id,
+                        "services": (
+                            job.services_summary
+                            if hasattr(job, "services_summary")
+                            else ", ".join(job_info["service_types"])
+                        ),
+                    }
+                ),
+                200,
+            )
+        except ValueError as ve:
+            db.session.rollback()
+            logger.error(f"Validation error: {str(ve)}")
+            return jsonify({"error": str(ve)}), 400
 
     except Exception as e:
         logger.error(f"Webhook error: {str(e)}")
@@ -2815,6 +3160,107 @@ def link_report_to_job(report_id):
 
     flash(f"Report #{report_id} successfully linked to {job.job_number}.", "success")
     return redirect(url_for("view_report", report_id=report_id))
+
+
+@app.route("/jobs/<int:job_id>/window_lead_checklist_pdf")
+def generate_window_lead_checklist_pdf(job_id):
+    # 1) Make sure the user is logged in
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    # 2) Query your database for the job
+    job = Job.query.get_or_404(job_id)
+
+    # 3) Define the path to wkhtmltopdf
+    #    Update the string below if you installed wkhtmltopdf elsewhere.
+    path_to_wkhtmltopdf = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
+
+    # 4) Create a pdfkit configuration object
+    config = pdfkit.configuration(wkhtmltopdf=path_to_wkhtmltopdf)
+
+    # 5) Render your checklist template to a string
+    #    The 'now' parameter is optional if you want the current datetime in your template
+    html_content = render_template(
+        "window_lead_checklist_template.html", job=job, now=datetime.utcnow
+    )
+
+    # 6) Create a temporary file to hold the generated PDF
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        pdf_file_path = tmp.name  # We'll store the PDF here
+
+    # 7) Convert the HTML to PDF, supplying the 'configuration' argument
+    pdfkit.from_string(html_content, pdf_file_path, configuration=config)
+
+    # 8) Finally, send the PDF file to the user
+    return send_file(
+        pdf_file_path,
+        as_attachment=True,  # Set to False if you want inline in browser
+        download_name="window_lead_checklist.pdf",
+    )
+
+
+@app.route("/jobs/<int:job_id>/upload-document", methods=["POST"])
+def upload_job_document(job_id):
+    if "user_id" not in session:
+        return redirect(url_for("index"))
+    user_id = session["user_id"]
+
+    job = Job.query.get_or_404(job_id)
+    # If not admin, or not job.user_id, do permission check if needed
+
+    # If you want to limit to 10, check existing doc count:
+    if len(job.documents) >= 10:
+        flash(
+            "This job already has 10 documents. Remove some before adding more.",
+            "error",
+        )
+        return redirect(url_for("view_job", job_id=job_id))
+
+    # Grab file from form
+    file = request.files.get("document_file")
+    title = request.form.get("title", "Uploaded Document")
+
+    if not file:
+        flash("No file provided.", "error")
+        return redirect(url_for("view_job", job_id=job_id))
+
+    filename = secure_filename(file.filename)
+    if filename == "":
+        flash("Invalid file name.", "error")
+        return redirect(url_for("view_job", job_id=job_id))
+
+    # Optionally, store in local folder
+    save_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    file.save(save_path)
+
+    # Create a JobDocument record
+    new_doc = JobDocument(
+        job_id=job_id,
+        user_id=user_id,
+        title=title,
+        filename=filename,
+        mime_type=file.content_type,
+        file_path=save_path,
+    )
+    db.session.add(new_doc)
+    db.session.commit()
+
+    flash("Document uploaded successfully!", "success")
+    return redirect(url_for("view_job", job_id=job_id))
+
+
+@app.route("/documents/<int:document_id>/download")
+def download_job_document(document_id):
+    doc = JobDocument.query.get_or_404(document_id)
+    # Optionally do permission checks
+    return send_file(doc.file_path, as_attachment=True, download_name=doc.filename)
+
+
+@app.route("/documents/<int:document_id>/view")
+def view_job_document(document_id):
+    doc = JobDocument.query.get_or_404(document_id)
+    return send_file(doc.file_path, mimetype=doc.mime_type)
 
 
 # -----------------------------------------------------------

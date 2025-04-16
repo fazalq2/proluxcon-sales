@@ -42,17 +42,86 @@
         <p>
           <strong>Client:</strong>
           {% if job.client_id %} {{ job.client.name }} {% if job.client.phone %}
-          (Phone: {{ job.client.phone }}) {% endif %} {% else %} Not assigned {%
+          (Phone: {{ job.client.phone }}){% endif %} {% else %} Not assigned {%
           endif %}
         </p>
         <p>
           <strong>Description:</strong> {{ job.description or "No description
           provided" }}
         </p>
+        {% if job.address %}
+        <p><strong>Installation Address:</strong> {{ job.address }}</p>
+        {% endif %}
       </div>
     </div>
   </div>
 </div>
+
+<!-- Opportunity Data Card -->
+{% if opportunity_data %}
+<div class="card" style="margin-top: 2rem">
+  <div class="card-header">
+    <h2 class="card-title">Opportunity Information</h2>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <p>
+          <strong>Lead Source:</strong> {{ opportunity_data.Source or 'Not
+          specified' }}
+        </p>
+        <p>
+          <strong>Contact Type:</strong> {{ opportunity_data.Contact_Type or
+          'Not specified' }}
+        </p>
+        <p>
+          <strong>Pipeline Stage:</strong> {{ opportunity_data.Pipeline_Stage or
+          'Not specified' }}
+        </p>
+        <p>
+          <strong>Property Type:</strong> {{ opportunity_data.Property_Type or
+          'Not specified' }}
+        </p>
+        <p><strong>Has HOA:</strong> {{ opportunity_data.Has_HOA }}</p>
+        {% if opportunity_data.Has_HOA == 'Yes' %}
+        <p><strong>HOA Name:</strong> {{ opportunity_data.HOA_Name }}</p>
+        {% endif %}
+      </div>
+      <div class="col-md-6">
+        <p>
+          <strong>Timeframe:</strong> {{ opportunity_data.Timeframe or 'Not
+          specified' }}
+        </p>
+        <p>
+          <strong>Number of Windows:</strong> {{ opportunity_data.Windows or
+          'Not specified' }}
+        </p>
+        <p>
+          <strong>Number of Doors:</strong> {{ opportunity_data.Doors or 'Not
+          specified' }}
+        </p>
+        <p>
+          <strong>Service Types:</strong> {{ opportunity_data.Service_Types or
+          'Not specified' }}
+        </p>
+        {% if opportunity_data.Roof_Type != 'None' %}
+        <p><strong>Roof Type:</strong> {{ opportunity_data.Roof_Type }}</p>
+        {% endif %}
+      </div>
+    </div>
+    {% if job.message %}
+    <div class="row" style="margin-top: 1rem">
+      <div class="col-md-12">
+        <h3>Message/Notes:</h3>
+        <div class="message-box">
+          {{ job.message|replace('\n', '<br />')|safe }}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 
 <!-- Installation Status Card -->
 <div class="card" style="margin-top: 2rem">
@@ -110,6 +179,25 @@
   </div>
 </div>
 
+<!-- Window Lead Checklist Section -->
+<div class="card" style="margin-top: 2rem">
+  <div class="card-header">
+    <h2 class="card-title">Window Lead Checklist</h2>
+  </div>
+  <div class="card-body">
+    <p>
+      Generate a pre-filled Window Lead Checklist for this job. Print it out,
+      have it signed, then scan and re-upload the signed copy.
+    </p>
+    <a
+      href="{{ url_for('generate_window_lead_checklist_pdf', job_id=job.id) }}"
+      class="btn btn-sm"
+    >
+      <i class="fas fa-file-pdf"></i> Generate Checklist PDF
+    </a>
+  </div>
+</div>
+
 <!-- Reports Section -->
 <div class="card" style="margin-top: 2rem">
   <div class="card-header">
@@ -154,6 +242,70 @@
   </div>
 </div>
 
+<!-- Job Documents Section -->
+<div class="card" style="margin-top: 2rem">
+  <div class="card-header">
+    <h2 class="card-title">Attached Documents</h2>
+  </div>
+  <div class="card-body">
+    {% if job.documents and job.documents|length > 0 %}
+    <ul>
+      {% for doc in job.documents %}
+      <li style="margin-bottom: 0.5rem">
+        <strong>{{ doc.title }}</strong> ({{ doc.filename }})
+        <br />
+        <a
+          href="{{ url_for('download_job_document', document_id=doc.id) }}"
+          class="btn btn-sm btn-secondary"
+        >
+          Download
+        </a>
+        <!-- If you have a route to view inline: -->
+        <a
+          href="{{ url_for('view_job_document', document_id=doc.id) }}"
+          class="btn btn-sm btn-secondary"
+        >
+          View
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>No documents attached to this job yet.</p>
+    {% endif %}
+
+    <!-- Upload Document Form -->
+    <form
+      action="{{ url_for('upload_job_document', job_id=job.id) }}"
+      method="POST"
+      enctype="multipart/form-data"
+      style="margin-top: 1rem"
+    >
+      <div class="mb-3">
+        <label for="docTitle" class="form-label">Title</label>
+        <input
+          type="text"
+          id="docTitle"
+          name="title"
+          class="form-control"
+          placeholder="e.g. Signed Checklist"
+        />
+      </div>
+      <div class="mb-3">
+        <label for="document_file" class="form-label">Document File</label>
+        <input
+          type="file"
+          id="document_file"
+          name="document_file"
+          class="form-control"
+          required
+        />
+      </div>
+      <button type="submit" class="btn btn-primary">Upload Document</button>
+    </form>
+  </div>
+</div>
+
 <!-- Update Job From Reports Button -->
 <div style="margin-top: 2rem; text-align: center">
   <form
@@ -179,13 +331,11 @@
     text-align: center;
     margin-bottom: 15px;
   }
-
   .installation-status h3 {
     margin-top: 0;
     margin-bottom: 10px;
     font-size: 1.2rem;
   }
-
   .status-badge {
     display: inline-block;
     padding: 0.25rem 0.75rem;
@@ -195,32 +345,26 @@
     text-transform: capitalize;
     margin-bottom: 5px;
   }
-
   .status-badge.complete {
     background: rgba(46, 204, 113, 0.15);
     color: #2ecc71;
   }
-
   .status-badge.incomplete {
     background: rgba(231, 76, 60, 0.15);
     color: #e74c3c;
   }
-
   .status-badge.in_progress {
     background: rgba(52, 152, 219, 0.15);
     color: #3498db;
   }
-
   .status-badge.pending {
     background: rgba(241, 196, 15, 0.15);
     color: #f39c12;
   }
-
   .status-badge.completed {
     background: rgba(46, 204, 113, 0.15);
     color: #2ecc71;
   }
-
   .status-badge.cancelled {
     background: rgba(189, 195, 199, 0.15);
     color: #7f8c8d;
@@ -230,17 +374,23 @@
     width: 100%;
     border-collapse: collapse;
   }
-
   .table th,
   .table td {
     padding: 0.75rem;
     text-align: left;
     border-bottom: 1px solid #eee;
   }
-
   .table th {
     background-color: #f5f5f5;
     font-weight: 600;
+  }
+
+  .message-box {
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    padding: 1rem;
+    border-left: 4px solid #3498db;
+    margin-top: 0.5rem;
   }
 </style>
 
