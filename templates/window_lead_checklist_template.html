@@ -1,3 +1,4 @@
+<!-- templates/window_lead_checklist_template.html -->
 <!DOCTYPE html>
 <html>
   <head>
@@ -11,7 +12,8 @@
         color: #333;
       }
       h1,
-      h2 {
+      h2,
+      h3 {
         margin-bottom: 0.5rem;
       }
       .section {
@@ -26,6 +28,9 @@
         margin-right: 8px;
         vertical-align: middle;
       }
+      .checked {
+        background-color: #000; /* Fill the box if it's checked */
+      }
       .signature-line {
         display: inline-block;
         margin-top: 1rem;
@@ -35,65 +40,355 @@
       .label {
         font-weight: bold;
       }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        margin-right: -15px;
+        margin-left: -15px;
+      }
+      .col-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+        padding-right: 15px;
+        padding-left: 15px;
+      }
+      .card {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        padding: 15px;
+      }
+      .card-header {
+        font-weight: bold;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+      }
+      .notes-box {
+        min-height: 100px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 10px;
+        margin-top: 5px;
+      }
     </style>
   </head>
   <body>
-    <h1>Window Lead Checklist</h1>
+    <div style="text-align: center">
+      <img
+        src="{{ url_for('static', filename='images/logo.png', _external=True) }}"
+        alt="Company Logo"
+        style="max-width: 150px"
+      />
+      <h1>Window Lead Checklist</h1>
+      <p>Please submit as PDF after a No Sale</p>
+    </div>
 
+    <!-- Top Checkboxes -->
     <div class="section">
-      <p class="label">Job Number:</p>
-      <p>{{ job.job_number }}</p>
-
-      <p class="label">Date:</p>
-      <p>{{ now().strftime("%m/%d/%Y") }}</p>
-
-      <p class="label">Sales Rep:</p>
-      <p>{% if job.user %}{{ job.user.name }}{% else %}N/A{% endif %}</p>
-
-      <p class="label">Client Name:</p>
-      <p>{% if job.client %}{{ job.client.name }}{% else %}N/A{% endif %}</p>
-
-      <p class="label">Client Phone:</p>
       <p>
-        {% if job.client and job.client.phone %}{{ job.client.phone }}{% else
-        %}N/A{% endif %}
+        <span
+          class="checkbox-box {% if checklist and checklist.material_order %}checked{% endif %}"
+        ></span>
+        Material order
       </p>
-
-      <p class="label">Installation Address:</p>
-      <p>{{ job.installation_address or "N/A" }}</p>
+      <p>
+        <span
+          class="checkbox-box {% if checklist and checklist.property_appraiser_snapshot %}checked{% endif %}"
+        ></span>
+        Property Appraiser snapshot
+      </p>
+      <p>
+        <span
+          class="checkbox-box {% if checklist and checklist.measure_labor_sheet %}checked{% endif %}"
+        ></span>
+        Measure/Labor sheet
+      </p>
+      <p>
+        <span
+          class="checkbox-box {% if checklist and checklist.property_appraiser_building_sketch %}checked{% endif %}"
+        ></span>
+        Property Appraiser building sketch (labeled)
+      </p>
+      <p>
+        <span
+          class="checkbox-box {% if checklist and checklist.property_photos_labeled %}checked{% endif %}"
+        ></span>
+        Property Photos 4 sides Labeled #1,2,3...
+      </p>
     </div>
 
     <hr />
 
-    <div class="section">
-      <h2>Inspection Checklist</h2>
-      <p>
-        <span class="checkbox-box"></span>
-        Verify all client information is correct
-      </p>
-      <p>
-        <span class="checkbox-box"></span>
-        Confirm window sizes and measurements
-      </p>
-      <p>
-        <span class="checkbox-box"></span>
-        Check HOA or community restrictions
-      </p>
-      <p>
-        <span class="checkbox-box"></span>
-        Inspect siding/stucco condition
-      </p>
+    <!-- Basic Information -->
+    <div class="row">
+      <div class="col-6">
+        <div class="section">
+          <p class="label">Date:</p>
+          <p>
+            {% if checklist and checklist.date %}{{
+            checklist.date.strftime('%m/%d/%Y') }}{% else %}{{
+            now().strftime('%m/%d/%Y') }}{% endif %}
+          </p>
+
+          <p class="label">Sales Rep:</p>
+          <p>
+            {{ checklist.sales_rep or (job.user.name if job.user else 'N/A') }}
+          </p>
+
+          <p class="label">Client Name:</p>
+          <p>
+            {{ checklist.client_name or (job.client.name if job.client else
+            'N/A') }}
+          </p>
+
+          <p class="label">Job Address:</p>
+          <p>{{ checklist.job_address or job.address or 'N/A' }}</p>
+        </div>
+      </div>
+
+      <!-- Purpose Section -->
+      <div class="col-6">
+        <div class="section">
+          <h3>Purpose</h3>
+          <p>
+            <span
+              class="checkbox-box {% if checklist and checklist.purpose_insurance %}checked{% endif %}"
+            ></span>
+            Insurance
+          </p>
+          <p>
+            <span
+              class="checkbox-box {% if checklist and checklist.purpose_rental %}checked{% endif %}"
+            ></span>
+            Rental
+          </p>
+          <p>
+            <span
+              class="checkbox-box {% if checklist and checklist.purpose_remodel %}checked{% endif %}"
+            ></span>
+            Remodel
+          </p>
+          <p>
+            <span
+              class="checkbox-box {% if checklist and checklist.purpose_house_flip %}checked{% endif %}"
+            ></span>
+            House Flip
+          </p>
+          <p>
+            <span
+              class="checkbox-box {% if checklist and checklist.purpose_new_construction %}checked{% endif %}"
+            ></span>
+            New Construction
+          </p>
+        </div>
+      </div>
     </div>
 
-    <hr />
+    <!-- HOA Information -->
+    <div class="card">
+      <div class="card-header">HOA Info:</div>
+      <div>
+        <p>
+          <span
+            class="checkbox-box {% if checklist and checklist.hoa_yes %}checked{% endif %}"
+          ></span>
+          Yes
+          <span style="display: inline-block; width: 30px"></span>
+          <span
+            class="checkbox-box {% if checklist and checklist.hoa_no %}checked{% endif %}"
+          ></span>
+          No
+        </p>
+        <p class="label">Community Name:</p>
+        <p>{{ checklist.hoa_community_name or job.hoa_name or 'N/A' }}</p>
+      </div>
+    </div>
 
+    <!-- Payment Information -->
+    <div class="row">
+      <div class="col-6">
+        <div class="card">
+          <div class="card-header">
+            Was the homeowner interested in cash terms or finance terms:
+          </div>
+          <div>
+            <p>
+              <span
+                class="checkbox-box {% if checklist and checklist.is_cash %}checked{% endif %}"
+              ></span>
+              Cash
+            </p>
+            <p>
+              <span
+                class="checkbox-box {% if checklist and checklist.is_finance %}checked{% endif %}"
+              ></span>
+              Finance
+            </p>
+            <p class="label">Type of financing discussed:</p>
+            <p>
+              <span
+                class="checkbox-box {% if checklist and checklist.finance_type == 'Ygrene' %}checked{% endif %}"
+              ></span>
+              Ygrene
+              <span style="display: inline-block; width: 30px"></span>
+              <span
+                class="checkbox-box {% if checklist and checklist.finance_type == 'GoodLeap' %}checked{% endif %}"
+              ></span>
+              GoodLeap
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-6">
+        <div class="card">
+          <div class="card-header">Project Horizon</div>
+          <div>
+            <p>
+              <span
+                class="checkbox-box {% if checklist and checklist.horizon_asap %}checked{% endif %}"
+              ></span>
+              ASAP
+            </p>
+            <p>
+              <span
+                class="checkbox-box {% if checklist and checklist.horizon_30_days %}checked{% endif %}"
+              ></span>
+              30 days
+            </p>
+            <p>
+              <span
+                class="checkbox-box {% if checklist and checklist.horizon_2_3_months %}checked{% endif %}"
+              ></span>
+              2-3 months
+            </p>
+            <p>
+              <span
+                class="checkbox-box {% if checklist and checklist.horizon_woft %}checked{% endif %}"
+              ></span>
+              W.O.F.T
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Financing Terms -->
+    <div class="card">
+      <div class="card-header">Terms discussed:</div>
+      <div>
+        <p>
+          <span
+            class="checkbox-box {% if checklist and checklist.term_0_interest %}checked{% endif %}"
+          ></span>
+          0% Interest
+          <span style="display: inline-block; width: 20px"></span>
+          <span
+            class="checkbox-box {% if checklist and checklist.term_5_year %}checked{% endif %}"
+          ></span>
+          5 year
+          <span style="display: inline-block; width: 20px"></span>
+          <span
+            class="checkbox-box {% if checklist and checklist.term_10_year %}checked{% endif %}"
+          ></span>
+          10 year
+          <span style="display: inline-block; width: 20px"></span>
+          <span
+            class="checkbox-box {% if checklist and checklist.term_15_year %}checked{% endif %}"
+          ></span>
+          15 year
+          <span style="display: inline-block; width: 20px"></span>
+          <span
+            class="checkbox-box {% if checklist and checklist.term_20_year %}checked{% endif %}"
+          ></span>
+          20 year
+        </p>
+
+        <p class="label">Monthly Budget:</p>
+        <p>{{ checklist.monthly_budget or 'N/A' }}</p>
+      </div>
+    </div>
+
+    <!-- Notes -->
     <div class="section">
-      <h2>Sign-off</h2>
-      <p>Homeowner Signature:<br /><span class="signature-line"></span></p>
-      <p>Date: <span class="signature-line" style="width: 100px"></span></p>
+      <p class="label">NOTES:</p>
+      <div class="notes-box">{{ checklist.notes or '' }}</div>
+    </div>
 
-      <p>Sales Rep Signature:<br /><span class="signature-line"></span></p>
-      <p>Date: <span class="signature-line" style="width: 100px"></span></p>
+    <!-- Enclosure Section -->
+    <div class="card">
+      <div class="card-header">Enclosure</div>
+      <div>
+        <p>
+          <span
+            class="checkbox-box {% if checklist and checklist.encl_photo_with_sketch %}checked{% endif %}"
+          ></span>
+          Photo with sketch of proposed window/door configuration on photo
+        </p>
+        <p>
+          <span
+            class="checkbox-box {% if checklist and checklist.encl_notated_areas %}checked{% endif %}"
+          ></span>
+          Notated areas, MULL layout
+        </p>
+        <p>
+          <span
+            class="checkbox-box {% if checklist and checklist.encl_existing_sliding_door_remain %}checked{% endif %}"
+          ></span>
+          Existing sliding glass door to remain YES / NO
+        </p>
+        <p>
+          <span
+            class="checkbox-box {% if checklist and checklist.building_3_stories %}checked{% endif %}"
+          ></span>
+          Building >3 stories
+        </p>
+        <p>Verified design pressures meet product selected</p>
+        <p class="label">Link to afcengcart.com/propertyinfo:</p>
+        <p>{{ checklist.link_afceng or 'N/A' }}</p>
+      </div>
+    </div>
+
+    <!-- Structural Modifications Section -->
+    <div class="card">
+      <div class="card-header">Structural Modifications</div>
+      <div>
+        <p>
+          <span
+            class="checkbox-box {% if checklist and checklist.structural_modifications %}checked{% endif %}"
+          ></span>
+          Structural modifications required
+        </p>
+        <p>
+          <span
+            class="checkbox-box {% if checklist and checklist.structural_photo_area_drawn %}checked{% endif %}"
+          ></span>
+          Photo of area with drawn sketch of proposed work
+        </p>
+        <p>
+          <span
+            class="checkbox-box {% if checklist and checklist.structural_photo_in_out %}checked{% endif %}"
+          ></span>
+          Photos of inside / outside of structural area
+        </p>
+      </div>
+    </div>
+
+    <!-- Sign-off -->
+    <div class="section" style="margin-top: 30px">
+      <div class="row">
+        <div class="col-6">
+          <p>Homeowner Signature:</p>
+          <div class="signature-line"></div>
+          <p style="margin-top: 10px">Date: _____________________</p>
+        </div>
+        <div class="col-6">
+          <p>Sales Rep Signature:</p>
+          <div class="signature-line"></div>
+          <p style="margin-top: 10px">Date: _____________________</p>
+        </div>
+      </div>
     </div>
   </body>
 </html>

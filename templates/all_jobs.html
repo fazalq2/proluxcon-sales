@@ -16,7 +16,7 @@
   {% endwith %}
 
   <!-- Search and Filter Form -->
-  <form method="GET" action="{{ url_for('all_jobs') }}" class="mb-3" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+  <form method="GET" action="{{ url_for('all_jobs') }}" class="mb-3" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
     <!-- Search box -->
     <div>
       <label for="searchBox" class="form-label">Search by Job # or Name</label>
@@ -56,12 +56,12 @@
       </select>
     </div>
 
-    <div class="align-self-end" style="display: flex; gap: 0.5rem;">
-      <button class="btn btn-primary" type="submit">
+    <div style="display: flex; gap: 0.5rem;">
+      <button class="btn btn-sm btn-primary" type="submit">
         <i class="fas fa-search"></i> Search
       </button>
       <!-- Link to create a new job if the user can do so -->
-      <a href="{{ url_for('create_job') }}" class="btn btn-success">
+      <a href="{{ url_for('create_job') }}" class="btn btn-sm btn-success">
         <i class="fas fa-plus"></i> New Job
       </a>
     </div>
@@ -101,11 +101,11 @@
               <div class="d-flex flex-wrap" style="gap: 0.5rem;">
                 <!-- View Job link -->
                 <a href="{{ url_for('view_job', job_id=job.job_id) }}" class="btn btn-sm btn-secondary">
-                  <i class="fas fa-eye"></i> View
+                  <i class="fas fa-eye"></i>
                 </a>
                 <!-- Edit job link (if user can edit) -->
                 <a href="{{ url_for('edit_job', job_id=job.job_id) }}" class="btn btn-sm btn-primary">
-                  <i class="fas fa-edit"></i> Edit
+                  <i class="fas fa-edit"></i>
                 </a>
                 <!-- Delete button calls AJAX fetch to /api/delete-job/<job_id> -->
                 <button 
@@ -113,7 +113,7 @@
                   class="btn btn-sm btn-danger delete-job-btn"
                   data-job-id="{{ job.job_id }}"
                 >
-                  <i class="fas fa-trash"></i> Delete
+                  <i class="fas fa-trash"></i>
                 </button>
               </div>
             </td>

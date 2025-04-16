@@ -186,15 +186,24 @@
   </div>
   <div class="card-body">
     <p>
-      Generate a pre-filled Window Lead Checklist for this job. Print it out,
-      have it signed, then scan and re-upload the signed copy.
+      Create or edit the Window Lead Checklist for this job. You can also
+      generate a pre-filled PDF to print out, have it signed, then scan and
+      re-upload the signed copy.
     </p>
-    <a
-      href="{{ url_for('generate_window_lead_checklist_pdf', job_id=job.id) }}"
-      class="btn btn-sm"
-    >
-      <i class="fas fa-file-pdf"></i> Generate Checklist PDF
-    </a>
+    <div class="action-buttons">
+      <a
+        href="{{ url_for('edit_window_lead_checklist', job_id=job.id) }}"
+        class="btn btn-sm"
+      >
+        <i class="fas fa-edit"></i> Edit Checklist
+      </a>
+      <a
+        href="{{ url_for('generate_window_lead_checklist_pdf', job_id=job.id) }}"
+        class="btn btn-sm"
+      >
+        <i class="fas fa-file-pdf"></i> Generate Checklist PDF
+      </a>
+    </div>
   </div>
 </div>
 

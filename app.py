@@ -10,6 +10,7 @@ import logging
 import traceback
 from datetime import timedelta
 from dotenv import load_dotenv
+from werkzeug.utils import secure_filename
 
 # Flask imports
 from flask import make_response, send_file
@@ -61,6 +62,11 @@ app = Flask(__name__, static_folder="static")
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
     days=1
 )  # Set session to last 1 day
+
+app.config["UPLOAD_FOLDER"] = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "uploads"
+)
+os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
 
 @app.before_request
@@ -609,6 +615,78 @@ class DashboardSetting(db.Model):
         self.default_time_period = default_time_period
         self.email_notifications = email_notifications
         self.sms_notifications = sms_notifications
+
+
+class WindowLeadChecklist(db.Model):
+    __tablename__ = "window_lead_checklist"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # One-to-One with Job
+    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False, unique=True)
+    job = db.relationship(
+        "Job", backref=db.backref("window_lead_checklist", uselist=False)
+    )
+
+    # Example: top checkboxes
+    material_order = db.Column(db.Boolean, default=False)
+    property_appraiser_snapshot = db.Column(db.Boolean, default=False)
+    measure_labor_sheet = db.Column(db.Boolean, default=False)
+    property_appraiser_building_sketch = db.Column(db.Boolean, default=False)
+    property_photos_labeled = db.Column(db.Boolean, default=False)
+
+    # Example: Basic fields
+    date = db.Column(db.Date)  # or db.DateTime if you prefer
+    sales_rep = db.Column(db.String(150))
+    client_name = db.Column(db.String(150))
+    job_address = db.Column(db.String(255))
+
+    # HOA info
+    hoa_yes = db.Column(db.Boolean, default=False)
+    hoa_no = db.Column(db.Boolean, default=False)
+    hoa_community_name = db.Column(db.String(255))
+
+    # Payment type
+    is_cash = db.Column(db.Boolean, default=False)
+    is_finance = db.Column(db.Boolean, default=False)
+    finance_type = db.Column(db.String(50))  # e.g. "Ygrene", "GoodLeap", etc.
+
+    # Financing terms
+    term_0_interest = db.Column(db.Boolean, default=False)
+    term_5_year = db.Column(db.Boolean, default=False)
+    term_10_year = db.Column(db.Boolean, default=False)
+    term_15_year = db.Column(db.Boolean, default=False)
+    term_20_year = db.Column(db.Boolean, default=False)
+
+    monthly_budget = db.Column(db.String(50))
+
+    # Purpose
+    purpose_insurance = db.Column(db.Boolean, default=False)
+    purpose_rental = db.Column(db.Boolean, default=False)
+    purpose_remodel = db.Column(db.Boolean, default=False)
+    purpose_house_flip = db.Column(db.Boolean, default=False)
+    purpose_new_construction = db.Column(db.Boolean, default=False)
+
+    # Project Horizon
+    horizon_asap = db.Column(db.Boolean, default=False)
+    horizon_30_days = db.Column(db.Boolean, default=False)
+    horizon_2_3_months = db.Column(db.Boolean, default=False)
+    horizon_woft = db.Column(db.Boolean, default=False)  # "W.O.F.T"
+
+    # Extra notes
+    notes = db.Column(db.Text)
+
+    # Example enclosure & structural fields
+    encl_photo_with_sketch = db.Column(db.Boolean, default=False)
+    encl_notated_areas = db.Column(db.Boolean, default=False)
+    encl_existing_sliding_door_remain = db.Column(db.Boolean, default=False)
+    building_3_stories = db.Column(db.Boolean, default=False)
+    link_afceng = db.Column(
+        db.String(255)
+    )  # e.g. URL https://www.afcengcart.com/propertyinfo.aspx
+    structural_modifications = db.Column(db.Boolean, default=False)
+    structural_photo_area_drawn = db.Column(db.Boolean, default=False)
+    structural_photo_in_out = db.Column(db.Boolean, default=False)
 
 
 # ------------------------------------------------------------
@@ -3164,40 +3242,168 @@ def link_report_to_job(report_id):
 
 @app.route("/jobs/<int:job_id>/window_lead_checklist_pdf")
 def generate_window_lead_checklist_pdf(job_id):
-    # 1) Make sure the user is logged in
     if "user_id" not in session:
         flash("Please log in first.", "error")
         return redirect(url_for("index"))
 
-    # 2) Query your database for the job
     job = Job.query.get_or_404(job_id)
+    if session.get("role") != "admin" and job.user_id != session["user_id"]:
+        flash("Access denied.", "error")
+        return redirect(url_for("dashboard"))
 
-    # 3) Define the path to wkhtmltopdf
-    #    Update the string below if you installed wkhtmltopdf elsewhere.
+    # Fetch the associated checklist
+    checklist = WindowLeadChecklist.query.filter_by(job_id=job_id).first()
+
+    # If no checklist, maybe redirect or create a new one
+    if not checklist:
+        flash("No Window Lead Checklist found. Please fill it out first.", "info")
+        return redirect(url_for("edit_window_lead_checklist", job_id=job_id))
+
+    # path to wkhtmltopdf:
     path_to_wkhtmltopdf = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
-
-    # 4) Create a pdfkit configuration object
     config = pdfkit.configuration(wkhtmltopdf=path_to_wkhtmltopdf)
 
-    # 5) Render your checklist template to a string
-    #    The 'now' parameter is optional if you want the current datetime in your template
+    # Render template (the same or a separate PDF-friendly version).
     html_content = render_template(
-        "window_lead_checklist_template.html", job=job, now=datetime.utcnow
+        "window_lead_checklist_template.html",
+        job=job,
+        checklist=checklist,
+        now=datetime.utcnow,
     )
 
-    # 6) Create a temporary file to hold the generated PDF
+    # Generate PDF
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-        pdf_file_path = tmp.name  # We'll store the PDF here
+        pdf_file_path = tmp.name
 
-    # 7) Convert the HTML to PDF, supplying the 'configuration' argument
     pdfkit.from_string(html_content, pdf_file_path, configuration=config)
 
-    # 8) Finally, send the PDF file to the user
     return send_file(
-        pdf_file_path,
-        as_attachment=True,  # Set to False if you want inline in browser
-        download_name="window_lead_checklist.pdf",
+        pdf_file_path, as_attachment=True, download_name="window_lead_checklist.pdf"
     )
+
+
+@app.route("/window_lead_checklist/<int:job_id>", methods=["GET", "POST"])
+def edit_window_lead_checklist(job_id):
+    """
+    Create or edit the WindowLeadChecklist for a given Job.
+    """
+    if "user_id" not in session:
+        flash("Please log in first.", "error")
+        return redirect(url_for("index"))
+
+    # Check that this job belongs to the user (if not admin)
+    job = Job.query.get_or_404(job_id)
+    if session.get("role") != "admin" and job.user_id != session["user_id"]:
+        flash("Access denied.", "error")
+        return redirect(url_for("dashboard"))
+
+    # Try to get existing checklist
+    checklist = WindowLeadChecklist.query.filter_by(job_id=job_id).first()
+    if not checklist:
+        # Create a new one in memory (won't save until we commit)
+        checklist = WindowLeadChecklist(job_id=job_id)
+
+    if request.method == "POST":
+        # Populate fields from form
+        # Booleans
+        checklist.material_order = bool(request.form.get("material_order"))
+        checklist.property_appraiser_snapshot = bool(
+            request.form.get("property_appraiser_snapshot")
+        )
+        checklist.measure_labor_sheet = bool(request.form.get("measure_labor_sheet"))
+        checklist.property_appraiser_building_sketch = bool(
+            request.form.get("property_appraiser_building_sketch")
+        )
+        checklist.property_photos_labeled = bool(
+            request.form.get("property_photos_labeled")
+        )
+
+        # Date (convert from string if necessary)
+        date_str = request.form.get("date")
+        if date_str:
+            checklist.date = datetime.strptime(date_str, "%Y-%m-%d")
+
+        # Basic strings
+        checklist.sales_rep = request.form.get("sales_rep")
+        checklist.client_name = request.form.get("client_name")
+        checklist.job_address = request.form.get("job_address")
+
+        # HOA
+        checklist.hoa_yes = bool(request.form.get("hoa_yes"))
+        checklist.hoa_no = bool(request.form.get("hoa_no"))
+        checklist.hoa_community_name = request.form.get("hoa_community_name")
+
+        # Payment
+        checklist.is_cash = bool(request.form.get("is_cash"))
+        checklist.is_finance = bool(request.form.get("is_finance"))
+        checklist.finance_type = request.form.get("finance_type")
+
+        # Financing terms
+        checklist.term_0_interest = bool(request.form.get("term_0_interest"))
+        checklist.term_5_year = bool(request.form.get("term_5_year"))
+        checklist.term_10_year = bool(request.form.get("term_10_year"))
+        checklist.term_15_year = bool(request.form.get("term_15_year"))
+        checklist.term_20_year = bool(request.form.get("term_20_year"))
+
+        checklist.monthly_budget = request.form.get("monthly_budget")
+
+        # Purpose
+        checklist.purpose_insurance = bool(request.form.get("purpose_insurance"))
+        checklist.purpose_rental = bool(request.form.get("purpose_rental"))
+        checklist.purpose_remodel = bool(request.form.get("purpose_remodel"))
+        checklist.purpose_house_flip = bool(request.form.get("purpose_house_flip"))
+        checklist.purpose_new_construction = bool(
+            request.form.get("purpose_new_construction")
+        )
+
+        # Horizon
+        checklist.horizon_asap = bool(request.form.get("horizon_asap"))
+        checklist.horizon_30_days = bool(request.form.get("horizon_30_days"))
+        checklist.horizon_2_3_months = bool(request.form.get("horizon_2_3_months"))
+        checklist.horizon_woft = bool(request.form.get("horizon_woft"))
+
+        # Notes
+        checklist.notes = request.form.get("notes")
+
+        # Enclosure, structural, etc
+        checklist.encl_photo_with_sketch = bool(
+            request.form.get("encl_photo_with_sketch")
+        )
+        checklist.encl_notated_areas = bool(request.form.get("encl_notated_areas"))
+        checklist.encl_existing_sliding_door_remain = bool(
+            request.form.get("encl_existing_sliding_door_remain")
+        )
+        checklist.building_3_stories = bool(request.form.get("building_3_stories"))
+        checklist.link_afceng = request.form.get("link_afceng")
+        checklist.structural_modifications = bool(
+            request.form.get("structural_modifications")
+        )
+        checklist.structural_photo_area_drawn = bool(
+            request.form.get("structural_photo_area_drawn")
+        )
+        checklist.structural_photo_in_out = bool(
+            request.form.get("structural_photo_in_out")
+        )
+
+        # If it's a new checklist, we need to add it to the session
+        if checklist.id is None:
+            db.session.add(checklist)
+
+        db.session.commit()
+        flash("Checklist saved!", "success")
+        return redirect(url_for("edit_window_lead_checklist", job_id=job_id))
+
+    # If GET, just render the form
+    return render_template(
+        "edit_window_lead_checklist.html", job=job, checklist=checklist
+    )
+
+
+@app.template_filter("strftime")
+def _jinja2_filter_datetime(date, fmt=None):
+    if not date:
+        return ""
+    return date.strftime(fmt)
 
 
 @app.route("/jobs/<int:job_id>/upload-document", methods=["POST"])
@@ -3208,6 +3414,9 @@ def upload_job_document(job_id):
 
     job = Job.query.get_or_404(job_id)
     # If not admin, or not job.user_id, do permission check if needed
+    if job.user_id != user_id and session.get("role") != "admin":
+        flash("You don't have permission to upload documents to this job.", "error")
+        return redirect(url_for("dashboard"))
 
     # If you want to limit to 10, check existing doc count:
     if len(job.documents) >= 10:
@@ -3230,29 +3439,45 @@ def upload_job_document(job_id):
         flash("Invalid file name.", "error")
         return redirect(url_for("view_job", job_id=job_id))
 
-    # Optionally, store in local folder
-    save_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-    file.save(save_path)
+    # Create a unique filename to prevent overwriting
+    unique_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{filename}"
+    save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_filename)
 
-    # Create a JobDocument record
-    new_doc = JobDocument(
-        job_id=job_id,
-        user_id=user_id,
-        title=title,
-        filename=filename,
-        mime_type=file.content_type,
-        file_path=save_path,
-    )
-    db.session.add(new_doc)
-    db.session.commit()
+    try:
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        # Save the file
+        file.save(save_path)
 
-    flash("Document uploaded successfully!", "success")
+        # Create a JobDocument record
+        new_doc = JobDocument(
+            job_id=job_id,
+            user_id=user_id,
+            title=title,
+            filename=filename,  # Store the original filename for display
+            mime_type=file.content_type,
+            file_path=save_path,  # Store the full path to the file
+        )
+        db.session.add(new_doc)
+        db.session.commit()
+
+        flash("Document uploaded successfully!", "success")
+    except Exception as e:
+        logger.error(f"Upload error: {str(e)}")
+        flash(f"Error uploading document: {str(e)}", "error")
+
     return redirect(url_for("view_job", job_id=job_id))
 
 
 @app.route("/documents/<int:document_id>/download")
 def download_job_document(document_id):
     doc = JobDocument.query.get_or_404(document_id)
+
+    # Check if the file exists
+    if not os.path.exists(doc.file_path):
+        flash("Document file not found on the server.", "error")
+        return redirect(url_for("view_job", job_id=doc.job_id))
+
     # Optionally do permission checks
     return send_file(doc.file_path, as_attachment=True, download_name=doc.filename)
 
@@ -3260,6 +3485,12 @@ def download_job_document(document_id):
 @app.route("/documents/<int:document_id>/view")
 def view_job_document(document_id):
     doc = JobDocument.query.get_or_404(document_id)
+
+    # Check if the file exists
+    if not os.path.exists(doc.file_path):
+        flash("Document file not found on the server.", "error")
+        return redirect(url_for("view_job", job_id=doc.job_id))
+
     return send_file(doc.file_path, mimetype=doc.mime_type)
 
 

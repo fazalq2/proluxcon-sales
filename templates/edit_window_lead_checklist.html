@@ -1,0 +1,750 @@
+<!-- templates/edit_window_lead_checklist.html -->
+{% extends "base.html" %} {% block content %}
+<div class="container">
+  <h2>Window Lead Checklist for {{ job.name }}</h2>
+  <p>Please submit as PDF after a No Sale</p>
+
+  <form
+    method="POST"
+    action="{{ url_for('edit_window_lead_checklist', job_id=job.id) }}"
+    class="form"
+  >
+    <!-- Top Checkboxes -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="form-check">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="material_order"
+            value="1"
+            id="material_order"
+            {%
+            if
+            checklist.material_order
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="material_order"
+            >Material order</label
+          >
+        </div>
+
+        <div class="form-check">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="property_appraiser_snapshot"
+            value="1"
+            id="property_appraiser_snapshot"
+            {%
+            if
+            checklist.property_appraiser_snapshot
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="property_appraiser_snapshot"
+            >Property Appraiser snapshot</label
+          >
+        </div>
+
+        <div class="form-check">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="measure_labor_sheet"
+            value="1"
+            id="measure_labor_sheet"
+            {%
+            if
+            checklist.measure_labor_sheet
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="measure_labor_sheet"
+            >Measure/Labor sheet</label
+          >
+        </div>
+
+        <div class="form-check">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="property_appraiser_building_sketch"
+            value="1"
+            id="property_appraiser_building_sketch"
+            {%
+            if
+            checklist.property_appraiser_building_sketch
+            %}checked{%
+            endif
+            %}
+          />
+          <label
+            class="form-check-label"
+            for="property_appraiser_building_sketch"
+            >Property Appraiser building sketch (labeled)</label
+          >
+        </div>
+
+        <div class="form-check">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="property_photos_labeled"
+            value="1"
+            id="property_photos_labeled"
+            {%
+            if
+            checklist.property_photos_labeled
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="property_photos_labeled"
+            >Property Photos 4 sides Labeled #1,2,3...</label
+          >
+        </div>
+      </div>
+    </div>
+
+    <hr />
+
+    <!-- Basic Information -->
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <div class="form-group">
+          <label for="date">Date:</label>
+          <input
+            type="date"
+            class="form-control"
+            name="date"
+            id="date"
+            value="{% if checklist.date %}{{ checklist.date|strftime('%Y-%m-%d') }}{% endif %}"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="sales_rep">Sales Rep:</label>
+          <input
+            type="text"
+            class="form-control"
+            name="sales_rep"
+            id="sales_rep"
+            value="{{ checklist.sales_rep or '' }}"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="client_name">Client Name:</label>
+          <input
+            type="text"
+            class="form-control"
+            name="client_name"
+            id="client_name"
+            value="{{ checklist.client_name or job.client.name or '' }}"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="job_address">Job Address:</label>
+          <input
+            type="text"
+            class="form-control"
+            name="job_address"
+            id="job_address"
+            value="{{ checklist.job_address or job.address or '' }}"
+          />
+        </div>
+      </div>
+
+      <!-- Purpose Section -->
+      <div class="col-md-6">
+        <div class="form-group">
+          <h5>Purpose</h5>
+          <div class="form-check">
+            <input
+              type="checkbox"
+              class="form-check-input"
+              name="purpose_insurance"
+              value="1"
+              id="purpose_insurance"
+              {%
+              if
+              checklist.purpose_insurance
+              %}checked{%
+              endif
+              %}
+            />
+            <label class="form-check-label" for="purpose_insurance"
+              >Insurance</label
+            >
+          </div>
+
+          <div class="form-check">
+            <input
+              type="checkbox"
+              class="form-check-input"
+              name="purpose_rental"
+              value="1"
+              id="purpose_rental"
+              {%
+              if
+              checklist.purpose_rental
+              %}checked{%
+              endif
+              %}
+            />
+            <label class="form-check-label" for="purpose_rental">Rental</label>
+          </div>
+
+          <div class="form-check">
+            <input
+              type="checkbox"
+              class="form-check-input"
+              name="purpose_remodel"
+              value="1"
+              id="purpose_remodel"
+              {%
+              if
+              checklist.purpose_remodel
+              %}checked{%
+              endif
+              %}
+            />
+            <label class="form-check-label" for="purpose_remodel"
+              >Remodel</label
+            >
+          </div>
+
+          <div class="form-check">
+            <input
+              type="checkbox"
+              class="form-check-input"
+              name="purpose_house_flip"
+              value="1"
+              id="purpose_house_flip"
+              {%
+              if
+              checklist.purpose_house_flip
+              %}checked{%
+              endif
+              %}
+            />
+            <label class="form-check-label" for="purpose_house_flip"
+              >House Flip</label
+            >
+          </div>
+
+          <div class="form-check">
+            <input
+              type="checkbox"
+              class="form-check-input"
+              name="purpose_new_construction"
+              value="1"
+              id="purpose_new_construction"
+              {%
+              if
+              checklist.purpose_new_construction
+              %}checked{%
+              endif
+              %}
+            />
+            <label class="form-check-label" for="purpose_new_construction"
+              >New Construction</label
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOA Information -->
+    <div class="card mb-3">
+      <div class="card-header">HOA Info:</div>
+      <div class="card-body">
+        <div class="form-check form-check-inline">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="hoa_yes"
+            value="1"
+            id="hoa_yes"
+            {%
+            if
+            checklist.hoa_yes
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="hoa_yes">Yes</label>
+        </div>
+
+        <div class="form-check form-check-inline">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="hoa_no"
+            value="1"
+            id="hoa_no"
+            {%
+            if
+            checklist.hoa_no
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="hoa_no">No</label>
+        </div>
+
+        <div class="form-group mt-2">
+          <label for="hoa_community_name">Community Name:</label>
+          <input
+            type="text"
+            class="form-control"
+            name="hoa_community_name"
+            id="hoa_community_name"
+            value="{{ checklist.hoa_community_name or job.hoa_name or '' }}"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Information -->
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">
+            Was the homeowner interested in cash terms or finance terms:
+          </div>
+          <div class="card-body">
+            <div class="form-check">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                name="is_cash"
+                value="1"
+                id="is_cash"
+                {%
+                if
+                checklist.is_cash
+                %}checked{%
+                endif
+                %}
+              />
+              <label class="form-check-label" for="is_cash">Cash</label>
+            </div>
+
+            <div class="form-check">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                name="is_finance"
+                value="1"
+                id="is_finance"
+                {%
+                if
+                checklist.is_finance
+                %}checked{%
+                endif
+                %}
+              />
+              <label class="form-check-label" for="is_finance">Finance</label>
+            </div>
+
+            <div class="form-group mt-2">
+              <label for="finance_type">Type of financing discussed:</label>
+              <div class="input-group">
+                <div class="form-check form-check-inline">
+                  <input type="radio" class="form-check-input"
+                  name="finance_type" value="Ygrene" id="finance_ygrene" {% if
+                  checklist.finance_type == 'Ygrene' %}checked{% endif %}>
+                  <label class="form-check-label" for="finance_ygrene"
+                    >Ygrene</label
+                  >
+                </div>
+
+                <div class="form-check form-check-inline">
+                  <input type="radio" class="form-check-input"
+                  name="finance_type" value="GoodLeap" id="finance_goodleap" {%
+                  if checklist.finance_type == 'GoodLeap' %}checked{% endif %}>
+                  <label class="form-check-label" for="finance_goodleap"
+                    >GoodLeap</label
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">Project Horizon</div>
+          <div class="card-body">
+            <div class="form-check">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                name="horizon_asap"
+                value="1"
+                id="horizon_asap"
+                {%
+                if
+                checklist.horizon_asap
+                %}checked{%
+                endif
+                %}
+              />
+              <label class="form-check-label" for="horizon_asap">ASAP</label>
+            </div>
+
+            <div class="form-check">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                name="horizon_30_days"
+                value="1"
+                id="horizon_30_days"
+                {%
+                if
+                checklist.horizon_30_days
+                %}checked{%
+                endif
+                %}
+              />
+              <label class="form-check-label" for="horizon_30_days"
+                >30 days</label
+              >
+            </div>
+
+            <div class="form-check">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                name="horizon_2_3_months"
+                value="1"
+                id="horizon_2_3_months"
+                {%
+                if
+                checklist.horizon_2_3_months
+                %}checked{%
+                endif
+                %}
+              />
+              <label class="form-check-label" for="horizon_2_3_months"
+                >2-3 months</label
+              >
+            </div>
+
+            <div class="form-check">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                name="horizon_woft"
+                value="1"
+                id="horizon_woft"
+                {%
+                if
+                checklist.horizon_woft
+                %}checked{%
+                endif
+                %}
+              />
+              <label class="form-check-label" for="horizon_woft">W.O.F.T</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Financing Terms -->
+    <div class="card mb-3">
+      <div class="card-header">Terms discussed:</div>
+      <div class="card-body">
+        <div class="form-check form-check-inline">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="term_0_interest"
+            value="1"
+            id="term_0_interest"
+            {%
+            if
+            checklist.term_0_interest
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="term_0_interest"
+            >0% Interest</label
+          >
+        </div>
+
+        <div class="form-check form-check-inline">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="term_5_year"
+            value="1"
+            id="term_5_year"
+            {%
+            if
+            checklist.term_5_year
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="term_5_year">5 year</label>
+        </div>
+
+        <div class="form-check form-check-inline">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="term_10_year"
+            value="1"
+            id="term_10_year"
+            {%
+            if
+            checklist.term_10_year
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="term_10_year">10 year</label>
+        </div>
+
+        <div class="form-check form-check-inline">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="term_15_year"
+            value="1"
+            id="term_15_year"
+            {%
+            if
+            checklist.term_15_year
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="term_15_year">15 year</label>
+        </div>
+
+        <div class="form-check form-check-inline">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="term_20_year"
+            value="1"
+            id="term_20_year"
+            {%
+            if
+            checklist.term_20_year
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="term_20_year">20 year</label>
+        </div>
+
+        <div class="form-group mt-3">
+          <label for="monthly_budget">Monthly Budget:</label>
+          <input
+            type="text"
+            class="form-control"
+            name="monthly_budget"
+            id="monthly_budget"
+            value="{{ checklist.monthly_budget or '' }}"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="form-group mb-3">
+      <label for="notes">NOTES:</label>
+      <textarea class="form-control" name="notes" id="notes" rows="4">
+{{ checklist.notes or '' }}</textarea
+      >
+    </div>
+
+    <!-- Enclosure Section -->
+    <div class="card mb-3">
+      <div class="card-header">Enclosure</div>
+      <div class="card-body">
+        <div class="form-check">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="encl_photo_with_sketch"
+            value="1"
+            id="encl_photo_with_sketch"
+            {%
+            if
+            checklist.encl_photo_with_sketch
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="encl_photo_with_sketch"
+            >Photo with sketch of proposed window/door configuration on
+            photo</label
+          >
+        </div>
+
+        <div class="form-check">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="encl_notated_areas"
+            value="1"
+            id="encl_notated_areas"
+            {%
+            if
+            checklist.encl_notated_areas
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="encl_notated_areas"
+            >Notated areas, MULL layout</label
+          >
+        </div>
+
+        <div class="form-check">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="encl_existing_sliding_door_remain"
+            value="1"
+            id="encl_existing_sliding_door_remain"
+            {%
+            if
+            checklist.encl_existing_sliding_door_remain
+            %}checked{%
+            endif
+            %}
+          />
+          <label
+            class="form-check-label"
+            for="encl_existing_sliding_door_remain"
+            >Existing sliding glass door to remain YES / NO</label
+          >
+        </div>
+
+        <div class="form-check">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="building_3_stories"
+            value="1"
+            id="building_3_stories"
+            {%
+            if
+            checklist.building_3_stories
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="building_3_stories"
+            >Building >3 stories</label
+          >
+        </div>
+
+        <div class="form-check">
+          <label class="form-check-label" for="link_afceng"
+            >Verified design pressures meet product selected</label
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="link_afceng">Link to afcengcart.com/propertyinfo:</label>
+          <input
+            type="text"
+            class="form-control"
+            name="link_afceng"
+            id="link_afceng"
+            value="{{ checklist.link_afceng or '' }}"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Structural Modifications Section -->
+    <div class="card mb-3">
+      <div class="card-header">Structural Modifications</div>
+      <div class="card-body">
+        <div class="form-check">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="structural_modifications"
+            value="1"
+            id="structural_modifications"
+            {%
+            if
+            checklist.structural_modifications
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="structural_modifications"
+            >Structural modifications required</label
+          >
+        </div>
+
+        <div class="form-check">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="structural_photo_area_drawn"
+            value="1"
+            id="structural_photo_area_drawn"
+            {%
+            if
+            checklist.structural_photo_area_drawn
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="structural_photo_area_drawn"
+            >Photo of area with drawn sketch of proposed work</label
+          >
+        </div>
+
+        <div class="form-check">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            name="structural_photo_in_out"
+            value="1"
+            id="structural_photo_in_out"
+            {%
+            if
+            checklist.structural_photo_in_out
+            %}checked{%
+            endif
+            %}
+          />
+          <label class="form-check-label" for="structural_photo_in_out"
+            >Photos of inside / outside of structural area</label
+          >
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group mt-4">
+      <button type="submit" class="btn btn-primary">Save Checklist</button>
+      <a
+        href="{{ url_for('view_job', job_id=job.id) }}"
+        class="btn btn-secondary"
+        >Cancel</a
+      >
+    </div>
+  </form>
+</div>
+{% endblock %}
